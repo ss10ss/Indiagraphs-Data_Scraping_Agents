@@ -98,32 +98,42 @@ try:
     print("Naye tab par switch ho rahe hain...")
     wait.until(lambda d: len(d.window_handles) > 1)
     
-    # Direct [1] call karne ke bajay iterate karke switch karenge taaki out of range error na aaye
     for handle in driver.window_handles:
         if handle != main_window:
             driver.switch_to.window(handle)
             break
     
     print("Naye tab ke completely load hone aur table ke dikhne ka wait...")
-    # Dynamic waiter: check karega jab tak table screen par physically read nahi ho jati
     table_wait = WebDriverWait(driver, 35)
     table_wait.until(EC.visibility_of_element_located((By.XPATH, "//table[@bid='80']")))
     
     time.sleep(2) 
     driver.save_screenshot("step6_data_tab_loaded.png")
     
-    # Latest Data Extraction (Pehli Row)
-    print("Latest data extract ho raha hai...")
-    first_row = wait.until(EC.presence_of_element_located((By.XPATH, "//table[@bid='80']/tbody/tr[@cid='1']")))
+    # Dynamic Data Extraction: Pehli non-empty row dhoondhna
+    print("Valid data row extract ho rahi hai...")
+    all_rows = driver.find_elements(By.XPATH, "//table[@bid='80']/tbody/tr")
     
-    # Year (Column 0)
-    period_label = first_row.find_element(By.XPATH, "./td[@c='0']//span").text.strip()
-    # Mumbai Gold Price (Column 1)
-    gold_mumbai_raw = first_row.find_element(By.XPATH, "./td[@c='1']//span").text.strip()
+    period_label = None
+    gold_mumbai_raw = None
     
+    # Top rows par loop chala kar check karenge jisme data blank na ho
+    for row in all_rows:
+        try:
+            p_label = row.find_element(By.XPATH, "./td[@c='0']//span").text.strip()
+            g_raw = row.find_element(By.XPATH, "./td[@c='1']//span").text.strip()
+            
+            # Agar dono values mil jayein aur blank na hon, toh loop rok dein
+            if p_label and g_raw and g_raw != "":
+                period_label = p_label
+                gold_mumbai_raw = g_raw
+                break
+        except Exception:
+            continue
+
     print(f"Extracted Data -> Year: {period_label}, Price: {gold_mumbai_raw}")
     
-    if period_label and gold_mumbai_raw and gold_mumbai_raw != "":
+    if period_label and gold_mumbai_raw:
         # Clean numeric value (Commas hatana)
         value = float(gold_mumbai_raw.replace(',', ''))
         
@@ -152,7 +162,7 @@ try:
         else:
             print(f"Year {period_label} ka data database me pehle se maujood hai. No changes made.")
     else:
-        print("Latest row me valid data nahi mila.")
+        print("Table me koi bhi valid non-empty row nahi mili.")
 
 finally:
     driver.quit()
