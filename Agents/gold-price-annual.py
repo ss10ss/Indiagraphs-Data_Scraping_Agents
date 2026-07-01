@@ -63,9 +63,22 @@ try:
     time.sleep(6) 
     driver.save_screenshot("step1_initial_page.png")
     
+    # Browser Alert Box Handler (Agar website "Corporate Network" wala alert throw karti hai)
+    try:
+        alert = driver.switch_to.alert
+        print(f"Alert detect hua: {alert.text}. Dismissing alert...")
+        alert.dismiss()
+        time.sleep(2)
+    except Exception:
+        print("Koi standard browser alert window nahi mili, aage badh rahe hain.")
+
     # 2. Type "gold average" in search box
     print("Search box me text enter ho raha hai...")
-    search_box = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "input[placeholder='Search']")))
+    # Element ke clickable hone ka wait karenge taaki state exception na aaye
+    search_box = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "input[placeholder='Search']")))
+    
+    # Click manually karke interaction state force karenge
+    search_box.click()
     search_box.clear()
     search_box.send_keys("gold average")
     driver.save_screenshot("step2_search_text_entered.png")
@@ -117,7 +130,7 @@ try:
     # Robust Retry Loop for Table Loading & Screenshot Verification
     print("Table element check karne ke liye custom verification loop shuru...")
     table_loaded = False
-    for attempt in range(1, 7): # Total 6 attempts (Yani 30 seconds max check)
+    for attempt in range(1, 7): 
         print(f"Attempt {attempt}: Table verify ki ja rahi hai...")
         all_rows = driver.find_elements(By.XPATH, "//table[@bid='80']/tbody/tr")
         
