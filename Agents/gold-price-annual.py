@@ -28,6 +28,7 @@ chrome_options.add_argument("--headless=new")
 chrome_options.add_argument("--no-sandbox")
 chrome_options.add_argument("--disable-dev-shm-usage")
 chrome_options.add_argument("--disable-gpu")
+chrome_options.add_argument("--hide-scrollbars")
 
 # Automation detection bypass (Isse RBI block nahi karega)
 chrome_options.add_argument("--disable-blink-features=AutomationControlled")
@@ -76,7 +77,6 @@ try:
     print("Search box me text enter ho raha hai...")
     search_box = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "input[placeholder='Search']")))
     
-    # Click manually karke interaction state force karenge
     search_box.click()
     search_box.clear()
     search_box.send_keys("gold average")
@@ -154,54 +154,56 @@ try:
     period_label = None
     gold_mumbai_raw = None
     
-    # Top rows par loop chala kar check karenge jisme data blank na ho
-    for row in all_rows:
-        try:
-            # FIX: .text ki jagah textContent attribute use kiya hai jo HTML DOM se force-fetch karega
-            p_label = row.find_element(By.XPATH, "./td[@c='0']//span").get_attribute("textContent").strip()
-            g_raw = row.find_element(By.XPATH, "./td[@c='1']//span").get_attribute("textContent").strip()
-            
-            # Agar dono values mil jayein aur blank na hon, toh loop rok dein
-            if p_label and g_raw and g_raw != "":
-                period_label = p_label
-                gold_mumbai_raw = g_raw
-                break
-        except Exception as row_err:
-            print(f"Row read karne me temporary error: {row_err}")
-            continue
+    # Check if table rows exist to prevent index errors
+    if len(all_rows) > 0:
+        # Top rows par loop chala kar check karenge jisme data blank na ho
+        for row in all_rows:
+            try:
+                p_label = row.find_element(By.XPATH, "./td[@c='0']//span").text.strip()
+                g_raw = row.find_element(By.XPATH, "./td[@c='1']//span").text.strip()
+                
+                # Agar dono values mil jayein aur blank na hon, toh loop rok dein
+                if p_label and g_raw and g_raw != "":
+                    period_label = p_label
+                    gold_mumbai_raw = g_raw
+                    break
+            except Exception:
+                continue
 
-    print(f"Extracted Data -> Year: {period_label}, Price: {gold_mumbai_raw}")
-    
-    if period_label and gold_mumbai_raw:
-        # Clean numeric value (Commas hatana)
-        value = float(gold_mumbai_raw.replace(',', ''))
+        print(f"Extracted Data -> Year: {period_label}, Price: {gold_mumbai_raw}")
         
-        # Supabase me check karein ki ye period_label pehle se hai ya nahi
-        print(f"Database table '{DESTINATION_TABLE}' me existing record check ho raha hai...")
-        response = supabase.table(DESTINATION_TABLE).select("*").eq("dataset_id", 1).eq("period_label", period_label).execute()
-        
-        if len(response.data) == 0:
-            print(f"Naya data mila! Database table '{DESTINATION_TABLE}' me insert ho raha hai...")
-            period_start, period_end = parse_fy_dates(period_label)
+        if period_label and gold_mumbai_raw:
+            # Clean numeric value (Commas hatana)
+            value = float(gold_mumbai_raw.replace(',', ''))
             
-            data_to_insert = {
-                "dataset_id": 1,
-                "period_type": "FY",
-                "period_label": period_label,
-                "period_start": period_start,
-                "period_end": period_end,
-                "value": value,
-                "note": "NEW",
-                "is_active": False,
-                "created_by": "AUTOMATION"
-            }
+            # Supabase me check karein ki ye period_label pehle se hai ya nahi
+            print(f"Database table '{DESTINATION_TABLE}' me existing record check ho raha hai...")
+            response = supabase.table(DESTINATION_TABLE).select("*").eq("dataset_id", 1).eq("period_label", period_label).execute()
             
-            insert_resp = supabase.table(DESTINATION_TABLE).insert(data_to_insert).execute()
-            print("Data successfully insert ho gaya.")
+            if len(response.data) == 0:
+                print(f"Naya data mila! Database table '{DESTINATION_TABLE}' me insert ho raha hai...")
+                period_start, period_end = parse_fy_dates(period_label)
+                
+                data_to_insert = {
+                    "dataset_id": 1,
+                    "period_type": "FY",
+                    "period_label": period_label,
+                    "period_start": period_start,
+                    "period_end": period_end,
+                    "value": value,
+                    "note": "NEW",
+                    "is_active": False,
+                    "created_by": "AUTOMATION"
+                }
+                
+                insert_resp = supabase.table(DESTINATION_TABLE).insert(data_to_insert).execute()
+                print("Data successfully insert ho gaya.")
+            else:
+                print(f"Year {period_label} ka data database me pehle se maujood hai. No changes made.")
         else:
-            print(f"Year {period_label} ka data database me pehle se maujood hai. No changes made.")
+            print("Table me koi bhi valid non-empty row nahi mili.")
     else:
-        print("Table me koi bhi valid non-empty row nahi mili.")
+        print("CRITICAL LOG: Execution complete but table rows were empty due to infinite loading overlay.")
 
 finally:
     driver.quit()
