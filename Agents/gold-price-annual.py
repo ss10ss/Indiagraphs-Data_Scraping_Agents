@@ -16,7 +16,7 @@ from supabase import create_client, Client
 DESTINATION_TABLE = "automation_test" 
 # =====================================================================
 
-# Supabase Credentials (GitHub Actions secrets se aayenge)
+# Supabase Credentials
 import os
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "YOUR_SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "YOUR_SUPABASE_KEY")
@@ -38,8 +38,8 @@ chrome_options.add_argument("--window-size=1366,768")
 chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
 
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
-driver.set_page_load_timeout(45) 
-wait = WebDriverWait(driver, 25)
+driver.set_page_load_timeout(50) 
+wait = WebDriverWait(driver, 35)
 
 def parse_fy_dates(period_label):
     try:
@@ -58,10 +58,10 @@ try:
     try:
         driver.get("https://data.rbi.org.in/DBIE/#/dbie/searchresult")
     except Exception as e:
-        print(f"Initial load timeout alert (Safely bypassing to force execution of next steps): {e}")
+        print(f"Initial load handle/timeout alert: {e}")
         
     print("Settle hone ke liye explicitly wait kar rahe hain...")
-    time.sleep(8) 
+    time.sleep(12) 
     driver.save_screenshot("step1_initial_page.png")
     print("Step 1 ka screenshot save ho gaya.")
     
@@ -76,7 +76,8 @@ try:
 
     # 2. Type "gold average" in search box
     print("Search box me text enter ho raha hai...")
-    search_box = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "input[placeholder='Search']")))
+    # Robust Backup: Agar placeholder direct render nahi hua toh input type search direct target hoga
+    search_box = wait.until(EC.presence_of_element_located((By.XPATH, "//input[@type='search' or @placeholder='Search']")))
     
     driver.execute_script("arguments[0].click();", search_box)
     driver.execute_script("arguments[0].value = '';", search_box)
@@ -101,7 +102,7 @@ try:
     driver.execute_script("arguments[0].click();", update_btn)
     
     print("Results update hone ke liye full structural wait...")
-    time.sleep(6)  
+    time.sleep(8)  
     driver.save_screenshot("step4_results_updated.png")
     print("Step 4 ka screenshot save ho gaya.")
     
@@ -113,7 +114,7 @@ try:
     driver.execute_script("arguments[0].click();", first_link)
     
     print("Link click ho gaya. Tabs check karne ke liye safe hold...")
-    time.sleep(10)
+    time.sleep(12)
     driver.save_screenshot("step5_link_clicked.png")
     print("Step 5 ka screenshot save ho gaya.")
     
@@ -130,10 +131,9 @@ try:
         print("ALERT: Background me dusra tab detect nahi hua. Current window par hi try karenge.")
             
     print("Loading spinner ke khatam hone ka explicit wait...")
-    time.sleep(5)
+    time.sleep(8)
 
-    # FIX: Iframe Context Switch Logic
-    # Naye tab par aakar table hamesha iframe me render hoti hai, isliye pehle iframe dhoondh kar switch karna padega
+    # Iframe Context Switch Logic
     print("Iframe dhoondh kar switch kiya ja raha hai...")
     try:
         iframe_element = wait.until(EC.presence_of_element_located((By.XPATH, "//iframe | //frame")))
