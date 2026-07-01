@@ -1,0 +1,42 @@
+name: Gold Price Annual Scraper
+
+on:
+  schedule:
+    # Har month ki 15th ko 00:00 UTC (05:30 AM IST) par run hoga
+    - cron: '0 0 15 * *'
+  workflow_dispatch: # Isse aap manually bhi jab chahein button click karke run kar sakte hain
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-state: '3.11'
+
+    - name: Install Chrome and Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y google-chrome-stable
+        python -m pip install --upgrade pip
+        pip install selenium webdriver-manager supabase
+
+    - name: Run Scraper Script
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+      run: |
+        cd Agents
+        python gold-price-annual.py
+
+    - name: Upload Debug Screenshots
+      if: always() # Agar script fail bhi ho jaye, tab bhi screenshots upload ho jayenge
+      uses: actions/upload-artifact@v4
+      with:
+        name: step-screenshots
+        path: Agents/step*.png
