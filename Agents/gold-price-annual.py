@@ -74,7 +74,6 @@ try:
 
     # 2. Type "gold average" in search box
     print("Search box me text enter ho raha hai...")
-    # Element ke clickable hone ka wait karenge taaki state exception na aaye
     search_box = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "input[placeholder='Search']")))
     
     # Click manually karke interaction state force karenge
@@ -158,15 +157,17 @@ try:
     # Top rows par loop chala kar check karenge jisme data blank na ho
     for row in all_rows:
         try:
-            p_label = row.find_element(By.XPATH, "./td[@c='0']//span").text.strip()
-            g_raw = row.find_element(By.XPATH, "./td[@c='1']//span").text.strip()
+            # FIX: .text ki jagah textContent attribute use kiya hai jo HTML DOM se force-fetch karega
+            p_label = row.find_element(By.XPATH, "./td[@c='0']//span").get_attribute("textContent").strip()
+            g_raw = row.find_element(By.XPATH, "./td[@c='1']//span").get_attribute("textContent").strip()
             
             # Agar dono values mil jayein aur blank na hon, toh loop rok dein
             if p_label and g_raw and g_raw != "":
                 period_label = p_label
                 gold_mumbai_raw = g_raw
                 break
-        except Exception:
+        except Exception as row_err:
+            print(f"Row read karne me temporary error: {row_err}")
             continue
 
     print(f"Extracted Data -> Year: {period_label}, Price: {gold_mumbai_raw}")
