@@ -76,10 +76,13 @@ try:
 
     # 2. Type "gold average" in search box
     print("Search box me text enter ho raha hai...")
-    search_box = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "input[placeholder='Search']")))
-    search_box.click()
-    search_box.clear()
+    search_box = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "input[placeholder='Search']")))
+    
+    # FIX: Element click intercepted se bachne ke liye JS Click use kiya hai
+    driver.execute_script("arguments[0].click();", search_box)
+    driver.execute_script("arguments[0].value = '';", search_box)
     search_box.send_keys("gold average")
+    
     time.sleep(3)  
     driver.save_screenshot("step2_search_text_entered.png")
     print("Step 2 ka screenshot save ho gaya.")
@@ -95,8 +98,10 @@ try:
     
     # 5. Click "Update Results" button
     print("Update Results button par click ho raha hai...")
-    update_btn = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "button.search_button")))
-    update_btn.click()
+    update_btn = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "button.search_button")))
+    # Yahan bhi safe side ke liye JS click lagaya taaki bad me dikkat na ho
+    driver.execute_script("arguments[0].click();", update_btn)
+    
     print("Results update hone ke liye full structural wait...")
     time.sleep(6)  
     driver.save_screenshot("step4_results_updated.png")
@@ -104,10 +109,11 @@ try:
     
     # Click on the first link
     print("First link par click ho raha hai...")
-    first_link = wait.until(EC.element_to_be_clickable((By.XPATH, "//a[contains(text(), 'Gold and Silver - Yearly Average Price')]")))
+    first_link = wait.until(EC.presence_of_element_located((By.XPATH, "//a[contains(text(), 'Gold and Silver - Yearly Average Price')]")))
     
     main_window = driver.current_window_handle
-    first_link.click()
+    driver.execute_script("arguments[0].click();", first_link)
+    
     print("Link click ho gaya. Tabs check karne ke liye safe hold...")
     time.sleep(10)
     driver.save_screenshot("step5_link_clicked.png")
@@ -137,7 +143,6 @@ try:
     table_loaded = False
     for attempt in range(1, 7): 
         print(f"Attempt {attempt}: New HTML structure ke rows verify kiye ja rahe hain...")
-        # Aapke diye hue HTML code ke custom attributes ke basis par direct rows target kiye hain
         all_rows = driver.find_elements(By.XPATH, "//td[@bid='76' or @bid='72']/ancestor::tr")
         
         if len(all_rows) > 0:
@@ -164,7 +169,6 @@ try:
     
     for row in all_rows:
         try:
-            # Bid 76 se Year milega aur same row me Bid 72 se Price nikalega
             p_label = row.find_element(By.XPATH, "./td[@bid='76']//span").get_attribute("textContent").strip()
             g_raw = row.find_element(By.XPATH, "./td[@bid='72']//span").get_attribute("textContent").strip()
             
@@ -178,7 +182,6 @@ try:
     print(f"Extracted Data -> Year: {period_label}, Price: {gold_mumbai_raw}")
     
     if period_label and gold_mumbai_raw:
-        # Clean numeric value (Commas aur spaces hatana)
         value = float(gold_mumbai_raw.replace(',', '').strip())
         
         print(f"Database table '{DESTINATION_TABLE}' me existing record check ho raha hai...")
