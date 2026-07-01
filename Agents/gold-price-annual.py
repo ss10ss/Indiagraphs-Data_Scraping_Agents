@@ -29,7 +29,7 @@ chrome_options.add_argument("--no-sandbox")
 chrome_options.add_argument("--disable-dev-shm-usage")
 chrome_options.add_argument("--disable-gpu")
 
-# Automation detection bypass (Isse RBI block nahi karega)
+# Automation detection bypass
 chrome_options.add_argument("--disable-blink-features=AutomationControlled")
 chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
 chrome_options.add_experimental_option("useAutomationExtension", False)
@@ -78,7 +78,6 @@ try:
     print("Search box me text enter ho raha hai...")
     search_box = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "input[placeholder='Search']")))
     
-    # FIX: Element click intercepted se bachne ke liye JS Click use kiya hai
     driver.execute_script("arguments[0].click();", search_box)
     driver.execute_script("arguments[0].value = '';", search_box)
     search_box.send_keys("gold average")
@@ -99,7 +98,6 @@ try:
     # 5. Click "Update Results" button
     print("Update Results button par click ho raha hai...")
     update_btn = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "button.search_button")))
-    # Yahan bhi safe side ke liye JS click lagaya taaki bad me dikkat na ho
     driver.execute_script("arguments[0].click();", update_btn)
     
     print("Results update hone ke liye full structural wait...")
@@ -132,11 +130,17 @@ try:
         print("ALERT: Background me dusra tab detect nahi hua. Current window par hi try karenge.")
             
     print("Loading spinner ke khatam hone ka explicit wait...")
+    time.sleep(5)
+
+    # FIX: Iframe Context Switch Logic
+    # Naye tab par aakar table hamesha iframe me render hoti hai, isliye pehle iframe dhoondh kar switch karna padega
+    print("Iframe dhoondh kar switch kiya ja raha hai...")
     try:
-        spinner_wait = WebDriverWait(driver, 15)
-        spinner_wait.until(EC.invisibility_of_element_located((By.CSS_SELECTOR, "div.loading, div.spinner, .loading-outer")))
-    except Exception:
-        print("Spinner check complete, moving to table verification loop...")
+        iframe_element = wait.until(EC.presence_of_element_located((By.XPATH, "//iframe | //frame")))
+        driver.switch_to.frame(iframe_element)
+        print("Successfully switched inside the data iframe.")
+    except Exception as iframe_err:
+        print(f"Iframe context direct target nahi hua, standard context par check rakhenge: {iframe_err}")
 
     # Robust Retry Loop for Table Loading & Screenshot Verification
     print("Table elements check karne ke liye custom verification loop shuru...")
