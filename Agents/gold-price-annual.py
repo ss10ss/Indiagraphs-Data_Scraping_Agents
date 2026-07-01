@@ -38,7 +38,7 @@ chrome_options.add_argument("--window-size=1366,768")
 chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
 
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
-driver.set_page_load_timeout(60) 
+driver.set_page_load_timeout(45) 
 wait = WebDriverWait(driver, 25)
 
 def parse_fy_dates(period_label):
@@ -58,13 +58,14 @@ try:
     try:
         driver.get("https://data.rbi.org.in/DBIE/#/dbie/searchresult")
     except Exception as e:
-        print(f"Initial load timeout alert (bypassing to continue execution): {e}")
+        print(f"Initial load timeout alert (Safely bypassing to force execution of next steps): {e}")
         
-    print("Initial page load hone ke liye full buffer wait...")
-    time.sleep(10)  # Website ko pehle poora load hone ka space diya
+    print("Settle hone ke liye explicitly wait kar rahe hain...")
+    time.sleep(8) 
     driver.save_screenshot("step1_initial_page.png")
+    print("Step 1 ka screenshot save ho gaya.")
     
-    # Browser Alert Box Handler (Agar website "Corporate Network" wala alert throw karti hai)
+    # Browser Alert Box Handler
     try:
         alert = driver.switch_to.alert
         print(f"Alert detect hua: {alert.text}. Dismissing alert...")
@@ -76,41 +77,43 @@ try:
     # 2. Type "gold average" in search box
     print("Search box me text enter ho raha hai...")
     search_box = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "input[placeholder='Search']")))
-    
     search_box.click()
     search_box.clear()
     search_box.send_keys("gold average")
-    time.sleep(3)  # Text type hone ke baad full setup load wait
+    time.sleep(3)  
     driver.save_screenshot("step2_search_text_entered.png")
+    print("Step 2 ka screenshot save ho gaya.")
     
     # 3 & 4. Select dropdown option "With all of the words"
     print("Dropdown select ho raha hai...")
     dropdown_element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "select.dropdown")))
     select = Select(dropdown_element)
     select.select_by_value("oneormorewords")
-    time.sleep(3)  # Dropdown handle hone ke baad wait
+    time.sleep(3)  
     driver.save_screenshot("step3_dropdown_selected.png")
+    print("Step 3 ka screenshot save ho gaya.")
     
     # 5. Click "Update Results" button
     print("Update Results button par click ho raha hai...")
     update_btn = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "button.search_button")))
     update_btn.click()
     print("Results update hone ke liye full structural wait...")
-    time.sleep(6)  # Search results query process hone ka wait
+    time.sleep(6)  
     driver.save_screenshot("step4_results_updated.png")
+    print("Step 4 ka screenshot save ho gaya.")
     
     # Click on the first link
     print("First link par click ho raha hai...")
     first_link = wait.until(EC.element_to_be_clickable((By.XPATH, "//a[contains(text(), 'Gold and Silver - Yearly Average Price')]")))
     
-    # Store old window handle
     main_window = driver.current_window_handle
     first_link.click()
     print("Link click ho gaya. Tabs check karne ke liye safe hold...")
     time.sleep(10)
     driver.save_screenshot("step5_link_clicked.png")
+    print("Step 5 ka screenshot save ho gaya.")
     
-    # 6. Switch to naye tab aur wait (Wahi pichli baar wala complete system)
+    # 6. Switch to naye tab aur wait
     print("Naye tab handles verify ho rahe hain...")
     current_handles = driver.window_handles
     if len(current_handles) > 1:
@@ -127,19 +130,21 @@ try:
         spinner_wait = WebDriverWait(driver, 15)
         spinner_wait.until(EC.invisibility_of_element_located((By.CSS_SELECTOR, "div.loading, div.spinner, .loading-outer")))
     except Exception:
-        print("Spinner element check bypass ho gaya ya timeout hua, moving to table retry loop...")
+        print("Spinner check complete, moving to table verification loop...")
 
-    # Robust Retry Loop for Table Loading & Screenshot Verification (Working system jo pichli baar chala tha)
-    print("Table element check karne ke liye custom verification loop shuru...")
+    # Robust Retry Loop for Table Loading & Screenshot Verification
+    print("Table elements check karne ke liye custom verification loop shuru...")
     table_loaded = False
     for attempt in range(1, 7): 
-        print(f"Attempt {attempt}: Table verify ki ja rahi hai...")
-        all_rows = driver.find_elements(By.XPATH, "//table[@bid='80']/tbody/tr")
+        print(f"Attempt {attempt}: New HTML structure ke rows verify kiye ja rahe hain...")
+        # Aapke diye hue HTML code ke custom attributes ke basis par direct rows target kiye hain
+        all_rows = driver.find_elements(By.XPATH, "//td[@bid='76' or @bid='72']/ancestor::tr")
         
         if len(all_rows) > 0:
-            print(f"SUCCESS: Table load ho gayi, {len(all_rows)} rows mili hain.")
+            print(f"SUCCESS: Table load ho gayi, {len(all_rows)} elements target ho chuke hain.")
             table_loaded = True
             driver.save_screenshot("step6_data_tab_loaded.png")
+            print("Step 6 data tab loaded screenshot capture ho gaya.")
             break
         else:
             print(f"Table abhi nahi mili. Capture kar rahe hain step6_attempt_{attempt}.png")
@@ -147,39 +152,35 @@ try:
             time.sleep(5)
             
     if not table_loaded:
-        print("CRITICAL: 30 seconds ke baad bhi table load nahi ho saki. Forcing final screenshot.")
+        print("CRITICAL: Table load nahi ho saki. Forcing final screenshot.")
         driver.save_screenshot("step6_data_tab_loaded.png")
     
-    # Dynamic Data Extraction: Pehli non-empty row dhoondhna
-    print("Valid data row extract ho rahi hai...")
-    all_rows = driver.find_elements(By.XPATH, "//table[@bid='80']/tbody/tr")
+    # Dynamic Data Extraction: Aapke diye HTML match logic ke mutabik parsing
+    print("Aapke HTML structure ke mutabik data extract ho raha hai...")
+    all_rows = driver.find_elements(By.XPATH, "//tr[./td[@bid='76']]")
     
     period_label = None
     gold_mumbai_raw = None
     
-    # Top rows par loop chala kar check karenge jisme data blank na ho
     for row in all_rows:
         try:
-            # textContent use kiya hai jo HTML DOM se actual visible data force extract karega
-            p_label = row.find_element(By.XPATH, "./td[@c='0']//span").get_attribute("textContent").strip()
-            g_raw = row.find_element(By.XPATH, "./td[@c='1']//span").get_attribute("textContent").strip()
+            # Bid 76 se Year milega aur same row me Bid 72 se Price nikalega
+            p_label = row.find_element(By.XPATH, "./td[@bid='76']//span").get_attribute("textContent").strip()
+            g_raw = row.find_element(By.XPATH, "./td[@bid='72']//span").get_attribute("textContent").strip()
             
-            # Agar dono values mil jayein aur blank na hon, toh loop rok dein
             if p_label and g_raw and g_raw != "":
                 period_label = p_label
                 gold_mumbai_raw = g_raw
                 break
-        except Exception as row_err:
-            print(f"Row read karne me temporary error: {row_err}")
+        except Exception:
             continue
 
     print(f"Extracted Data -> Year: {period_label}, Price: {gold_mumbai_raw}")
     
     if period_label and gold_mumbai_raw:
-        # Clean numeric value (Commas hatana)
-        value = float(gold_mumbai_raw.replace(',', ''))
+        # Clean numeric value (Commas aur spaces hatana)
+        value = float(gold_mumbai_raw.replace(',', '').strip())
         
-        # Supabase me check karein ki ye period_label pehle se hai ya nahi
         print(f"Database table '{DESTINATION_TABLE}' me existing record check ho raha hai...")
         response = supabase.table(DESTINATION_TABLE).select("*").eq("dataset_id", 1).eq("period_label", period_label).execute()
         
@@ -204,7 +205,7 @@ try:
         else:
             print(f"Year {period_label} ka data database me pehle se maujood hai. No changes made.")
     else:
-        print("Table me koi bhi valid non-empty row nahi mili.")
+        print("Table me koi bhi valid non-empty row ya matching bid attribute nahi mila.")
 
 finally:
     driver.quit()
