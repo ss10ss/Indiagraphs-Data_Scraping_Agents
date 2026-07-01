@@ -91,23 +91,29 @@ try:
     # Store old window handle
     main_window = driver.current_window_handle
     first_link.click()
-    time.sleep(3)
+    print("Link click ho gaya. Tabs check karne ke liye safe hold...")
+    time.sleep(10)
     driver.save_screenshot("step5_link_clicked.png")
     
-    # 6. Switch to naye tab aur wait (Safe Loop Logic)
-    print("Naye tab par switch ho rahe hain...")
-    wait.until(lambda d: len(d.window_handles) > 1)
+    # 6. Switch to naye tab aur wait
+    print("Naye tab handles verify ho rahe hain...")
     
-    for handle in driver.window_handles:
-        if handle != main_window:
-            driver.switch_to.window(handle)
-            break
+    # Lambda wait hatakar simple conditional checking taaki timeout exception se script crash na ho
+    current_handles = driver.window_handles
+    if len(current_handles) > 1:
+        for handle in current_handles:
+            if handle != main_window:
+                driver.switch_to.window(handle)
+                print("Naye tab par switch successfully ho gaye.")
+                break
+    else:
+        print("ALERT: Background me dusra tab detect nahi hua. Current window par hi try karenge.")
             
-    print("Naye tab ko load karne ke liye 15 seconds ka explicit hold...")
+    print("Naye tab ko stable karne ke liye 15 seconds ka explicit hold...")
     time.sleep(15) 
     driver.save_screenshot("step6_data_tab_loaded.png")
     
-    # Dynamic Data Extraction: Pehli non-empty row dhoondhna- table ke liye yahan wait laga diya hai
+    # Dynamic Data Extraction: Pehli non-empty row dhoondhna
     print("Valid data row extract ho rahi hai...")
     first_row_check = wait.until(EC.presence_of_element_located((By.XPATH, "//table[@bid='80']/tbody/tr")))
     all_rows = driver.find_elements(By.XPATH, "//table[@bid='80']/tbody/tr")
