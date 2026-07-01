@@ -102,16 +102,14 @@ try:
         if handle != main_window:
             driver.switch_to.window(handle)
             break
-    
-    print("Naye tab ke completely load hone aur table ke dikhne ka wait...")
-    table_wait = WebDriverWait(driver, 35)
-    table_wait.until(EC.visibility_of_element_located((By.XPATH, "//table[@bid='80']")))
-    
-    time.sleep(2) 
+            
+    print("Naye tab ko load karne ke liye 15 seconds ka explicit hold...")
+    time.sleep(15) 
     driver.save_screenshot("step6_data_tab_loaded.png")
     
-    # Dynamic Data Extraction: Pehli non-empty row dhoondhna
+    # Dynamic Data Extraction: Pehli non-empty row dhoondhna- table ke liye yahan wait laga diya hai
     print("Valid data row extract ho rahi hai...")
+    first_row_check = wait.until(EC.presence_of_element_located((By.XPATH, "//table[@bid='80']/tbody/tr")))
     all_rows = driver.find_elements(By.XPATH, "//table[@bid='80']/tbody/tr")
     
     period_label = None
