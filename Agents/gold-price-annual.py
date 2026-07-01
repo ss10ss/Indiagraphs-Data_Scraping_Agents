@@ -28,7 +28,6 @@ chrome_options.add_argument("--headless=new")
 chrome_options.add_argument("--no-sandbox")
 chrome_options.add_argument("--disable-dev-shm-usage")
 chrome_options.add_argument("--disable-gpu")
-chrome_options.add_argument("--hide-scrollbars")
 
 # Automation detection bypass (Isse RBI block nahi karega)
 chrome_options.add_argument("--disable-blink-features=AutomationControlled")
@@ -61,7 +60,8 @@ try:
     except Exception as e:
         print(f"Initial load timeout alert (bypassing to continue execution): {e}")
         
-    time.sleep(6) 
+    print("Initial page load hone ke liye full buffer wait...")
+    time.sleep(10)  # Website ko pehle poora load hone ka space diya
     driver.save_screenshot("step1_initial_page.png")
     
     # Browser Alert Box Handler (Agar website "Corporate Network" wala alert throw karti hai)
@@ -69,7 +69,7 @@ try:
         alert = driver.switch_to.alert
         print(f"Alert detect hua: {alert.text}. Dismissing alert...")
         alert.dismiss()
-        time.sleep(2)
+        time.sleep(3)
     except Exception:
         print("Koi standard browser alert window nahi mili, aage badh rahe hain.")
 
@@ -80,6 +80,7 @@ try:
     search_box.click()
     search_box.clear()
     search_box.send_keys("gold average")
+    time.sleep(3)  # Text type hone ke baad full setup load wait
     driver.save_screenshot("step2_search_text_entered.png")
     
     # 3 & 4. Select dropdown option "With all of the words"
@@ -87,13 +88,15 @@ try:
     dropdown_element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "select.dropdown")))
     select = Select(dropdown_element)
     select.select_by_value("oneormorewords")
+    time.sleep(3)  # Dropdown handle hone ke baad wait
     driver.save_screenshot("step3_dropdown_selected.png")
     
     # 5. Click "Update Results" button
     print("Update Results button par click ho raha hai...")
     update_btn = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "button.search_button")))
     update_btn.click()
-    time.sleep(4)
+    print("Results update hone ke liye full structural wait...")
+    time.sleep(6)  # Search results query process hone ka wait
     driver.save_screenshot("step4_results_updated.png")
     
     # Click on the first link
@@ -107,7 +110,7 @@ try:
     time.sleep(10)
     driver.save_screenshot("step5_link_clicked.png")
     
-    # 6. Switch to naye tab aur wait
+    # 6. Switch to naye tab aur wait (Wahi pichli baar wala complete system)
     print("Naye tab handles verify ho rahe hain...")
     current_handles = driver.window_handles
     if len(current_handles) > 1:
@@ -126,7 +129,7 @@ try:
     except Exception:
         print("Spinner element check bypass ho gaya ya timeout hua, moving to table retry loop...")
 
-    # Robust Retry Loop for Table Loading & Screenshot Verification
+    # Robust Retry Loop for Table Loading & Screenshot Verification (Working system jo pichli baar chala tha)
     print("Table element check karne ke liye custom verification loop shuru...")
     table_loaded = False
     for attempt in range(1, 7): 
@@ -154,56 +157,54 @@ try:
     period_label = None
     gold_mumbai_raw = None
     
-    # Check if table rows exist to prevent index errors
-    if len(all_rows) > 0:
-        # Top rows par loop chala kar check karenge jisme data blank na ho
-        for row in all_rows:
-            try:
-                p_label = row.find_element(By.XPATH, "./td[@c='0']//span").text.strip()
-                g_raw = row.find_element(By.XPATH, "./td[@c='1']//span").text.strip()
-                
-                # Agar dono values mil jayein aur blank na hon, toh loop rok dein
-                if p_label and g_raw and g_raw != "":
-                    period_label = p_label
-                    gold_mumbai_raw = g_raw
-                    break
-            except Exception:
-                continue
+    # Top rows par loop chala kar check karenge jisme data blank na ho
+    for row in all_rows:
+        try:
+            # textContent use kiya hai jo HTML DOM se actual visible data force extract karega
+            p_label = row.find_element(By.XPATH, "./td[@c='0']//span").get_attribute("textContent").strip()
+            g_raw = row.find_element(By.XPATH, "./td[@c='1']//span").get_attribute("textContent").strip()
+            
+            # Agar dono values mil jayein aur blank na hon, toh loop rok dein
+            if p_label and g_raw and g_raw != "":
+                period_label = p_label
+                gold_mumbai_raw = g_raw
+                break
+        except Exception as row_err:
+            print(f"Row read karne me temporary error: {row_err}")
+            continue
 
-        print(f"Extracted Data -> Year: {period_label}, Price: {gold_mumbai_raw}")
+    print(f"Extracted Data -> Year: {period_label}, Price: {gold_mumbai_raw}")
+    
+    if period_label and gold_mumbai_raw:
+        # Clean numeric value (Commas hatana)
+        value = float(gold_mumbai_raw.replace(',', ''))
         
-        if period_label and gold_mumbai_raw:
-            # Clean numeric value (Commas hatana)
-            value = float(gold_mumbai_raw.replace(',', ''))
+        # Supabase me check karein ki ye period_label pehle se hai ya nahi
+        print(f"Database table '{DESTINATION_TABLE}' me existing record check ho raha hai...")
+        response = supabase.table(DESTINATION_TABLE).select("*").eq("dataset_id", 1).eq("period_label", period_label).execute()
+        
+        if len(response.data) == 0:
+            print(f"Naya data mila! Database table '{DESTINATION_TABLE}' me insert ho raha hai...")
+            period_start, period_end = parse_fy_dates(period_label)
             
-            # Supabase me check karein ki ye period_label pehle se hai ya nahi
-            print(f"Database table '{DESTINATION_TABLE}' me existing record check ho raha hai...")
-            response = supabase.table(DESTINATION_TABLE).select("*").eq("dataset_id", 1).eq("period_label", period_label).execute()
+            data_to_insert = {
+                "dataset_id": 1,
+                "period_type": "FY",
+                "period_label": period_label,
+                "period_start": period_start,
+                "period_end": period_end,
+                "value": value,
+                "note": "NEW",
+                "is_active": False,
+                "created_by": "AUTOMATION"
+            }
             
-            if len(response.data) == 0:
-                print(f"Naya data mila! Database table '{DESTINATION_TABLE}' me insert ho raha hai...")
-                period_start, period_end = parse_fy_dates(period_label)
-                
-                data_to_insert = {
-                    "dataset_id": 1,
-                    "period_type": "FY",
-                    "period_label": period_label,
-                    "period_start": period_start,
-                    "period_end": period_end,
-                    "value": value,
-                    "note": "NEW",
-                    "is_active": False,
-                    "created_by": "AUTOMATION"
-                }
-                
-                insert_resp = supabase.table(DESTINATION_TABLE).insert(data_to_insert).execute()
-                print("Data successfully insert ho gaya.")
-            else:
-                print(f"Year {period_label} ka data database me pehle se maujood hai. No changes made.")
+            insert_resp = supabase.table(DESTINATION_TABLE).insert(data_to_insert).execute()
+            print("Data successfully insert ho gaya.")
         else:
-            print("Table me koi bhi valid non-empty row nahi mili.")
+            print(f"Year {period_label} ka data database me pehle se maujood hai. No changes made.")
     else:
-        print("CRITICAL LOG: Execution complete but table rows were empty due to infinite loading overlay.")
+        print("Table me koi bhi valid non-empty row nahi mili.")
 
 finally:
     driver.quit()
