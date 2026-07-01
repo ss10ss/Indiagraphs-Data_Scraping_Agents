@@ -97,8 +97,6 @@ try:
     
     # 6. Switch to naye tab aur wait
     print("Naye tab handles verify ho rahe hain...")
-    
-    # Lambda wait hatakar simple conditional checking taaki timeout exception se script crash na ho
     current_handles = driver.window_handles
     if len(current_handles) > 1:
         for handle in current_handles:
@@ -109,8 +107,15 @@ try:
     else:
         print("ALERT: Background me dusra tab detect nahi hua. Current window par hi try karenge.")
             
-    print("Naye tab ko stable karne ke liye 15 seconds ka explicit hold...")
-    time.sleep(15) 
+    print("Loading spinner ke khatam hone ka explicit wait...")
+    # Spinner wrapper elements ko disappear hone tak hold karega
+    try:
+        spinner_wait = WebDriverWait(driver, 45)
+        spinner_wait.until(EC.invisibility_of_element_located((By.CSS_SELECTOR, "div.loading, div.spinner, .loading-outer")))
+    except Exception:
+        print("Spinner element check bypass ho gaya ya timeout hua, next layer checking...")
+
+    time.sleep(5) 
     driver.save_screenshot("step6_data_tab_loaded.png")
     
     # Dynamic Data Extraction: Pehli non-empty row dhoondhna
