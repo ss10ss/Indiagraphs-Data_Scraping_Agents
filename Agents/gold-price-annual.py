@@ -29,22 +29,19 @@ chrome_options.add_argument("--no-sandbox")
 chrome_options.add_argument("--disable-dev-shm-usage")
 chrome_options.add_argument("--disable-gpu")
 
-# Dynamic tracking blocks aur automation detection bypass karne ke liye flags
+# Automation detection bypass (Isse RBI block nahi karega)
 chrome_options.add_argument("--disable-blink-features=AutomationControlled")
 chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
 chrome_options.add_experimental_option("useAutomationExtension", False)
 
-# Real Window size aur professional user agent header taaki cloud datacenter block na ho
 chrome_options.add_argument("--window-size=1366,768")
 chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
 
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
-# Script hanging se bachne ke liye page load timeout limit
 driver.set_page_load_timeout(60) 
 wait = WebDriverWait(driver, 25)
 
 def parse_fy_dates(period_label):
-    # Format "2025-26" -> Start: 2025-04-01, End: 2026-03-31
     try:
         start_year = period_label.split('-')[0].strip()
         end_year_short = period_label.split('-')[1].strip()
@@ -90,17 +87,25 @@ try:
     # Click on the first link
     print("First link par click ho raha hai...")
     first_link = wait.until(EC.element_to_be_clickable((By.XPATH, "//a[contains(text(), 'Gold and Silver - Yearly Average Price')]")))
+    
+    # Store old window handle
+    main_window = driver.current_window_handle
     first_link.click()
     time.sleep(3)
     driver.save_screenshot("step5_link_clicked.png")
     
-    # 6. Switch to naye tab aur wait
+    # 6. Switch to naye tab aur wait (Safe Loop Logic)
     print("Naye tab par switch ho rahe hain...")
     wait.until(lambda d: len(d.window_handles) > 1)
-    driver.switch_to.window(driver.window_handles[1])
+    
+    # Direct [1] call karne ke bajay iterate karke switch karenge taaki out of range error na aaye
+    for handle in driver.window_handles:
+        if handle != main_window:
+            driver.switch_to.window(handle)
+            break
     
     print("Naye tab ke completely load hone aur table ke dikhne ka wait...")
-    # Dynamic waiter check karega jab tak table elements screen par read nahi ho jate
+    # Dynamic waiter: check karega jab tak table screen par physically read nahi ho jati
     table_wait = WebDriverWait(driver, 35)
     table_wait.until(EC.visibility_of_element_located((By.XPATH, "//table[@bid='80']")))
     
