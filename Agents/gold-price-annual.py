@@ -27,9 +27,14 @@ chrome_options = Options()
 chrome_options.add_argument("--headless=new")
 chrome_options.add_argument("--no-sandbox")
 chrome_options.add_argument("--disable-dev-shm-usage")
+chrome_options.add_argument("--disable-gpu")
+# RBI ki blocking bypass karne ke liye real browser ka User-Agent header
+chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
 chrome_options.add_argument("--window-size=1920,1080")
 
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+# Script hanging se bachne ke liye page load timeout limit
+driver.set_page_load_timeout(60) 
 wait = WebDriverWait(driver, 20)
 
 def parse_fy_dates(period_label):
@@ -47,8 +52,12 @@ def parse_fy_dates(period_label):
 try:
     # 1. Go to URL
     print("Page open ho raha hai...")
-    driver.get("https://data.rbi.org.in/DBIE/#/dbie/searchresult")
-    time.sleep(3)
+    try:
+        driver.get("https://data.rbi.org.in/DBIE/#/dbie/searchresult")
+    except Exception as e:
+        print(f"Initial load timeout alert (bypassing to continue execution): {e}")
+        
+    time.sleep(5) 
     driver.save_screenshot("step1_initial_page.png")
     
     # 2. Type "gold average" in search box
