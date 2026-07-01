@@ -2,9 +2,8 @@ name: Gold Price Annual Scraper
 
 on:
   schedule:
-    # Har month ki 15th ko 00:00 UTC (05:30 AM IST) par run hoga
     - cron: '0 0 15 * *'
-  workflow_dispatch: # Isse aap manually bhi jab chahein button click karke run kar sakte hain
+  workflow_dispatch:
 
 jobs:
   scrape:
@@ -17,9 +16,9 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-state: '3.11'
+        python-version: '3.11'
 
-    - name: Install Chrome and Dependencies
+    - name: Install Chrome & Dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y google-chrome-stable
@@ -35,7 +34,7 @@ jobs:
         python gold-price-annual.py
 
     - name: Upload Debug Screenshots
-      if: always() # Agar script fail bhi ho jaye, tab bhi screenshots upload ho jayenge
+      if: always()
       uses: actions/upload-artifact@v4
       with:
         name: step-screenshots
