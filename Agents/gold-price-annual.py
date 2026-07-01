@@ -93,8 +93,13 @@ try:
     wait.until(lambda d: len(d.window_handles) > 1)
     driver.switch_to.window(driver.window_handles[1])
     
-    print("Naye tab ke load hone ka wait...")
-    time.sleep(10) 
+    print("Naye tab ke completely load hone aur table ke dikhne ka wait...")
+    # Yeh tab tak wait karega jab tak table ka main element DOM me load hokar visibility nahi le leta (Max 30 seconds)
+    table_wait = WebDriverWait(driver, 30)
+    table_wait.until(EC.visibility_of_element_located((By.XPATH, "//table[@bid='80']")))
+    
+    # Ek safe screenshot capture karne ke liye 2 second ka pause jab table mil jaye
+    time.sleep(2)
     driver.save_screenshot("step6_data_tab_loaded.png")
     
     # Latest Data Extraction (Pehli Row)
