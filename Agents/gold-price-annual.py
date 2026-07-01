@@ -108,19 +108,35 @@ try:
         print("ALERT: Background me dusra tab detect nahi hua. Current window par hi try karenge.")
             
     print("Loading spinner ke khatam hone ka explicit wait...")
-    # Spinner wrapper elements ko disappear hone tak hold karega
     try:
-        spinner_wait = WebDriverWait(driver, 45)
+        spinner_wait = WebDriverWait(driver, 15)
         spinner_wait.until(EC.invisibility_of_element_located((By.CSS_SELECTOR, "div.loading, div.spinner, .loading-outer")))
     except Exception:
-        print("Spinner element check bypass ho gaya ya timeout hua, next layer checking...")
+        print("Spinner element check bypass ho gaya ya timeout hua, moving to table retry loop...")
 
-    time.sleep(5) 
-    driver.save_screenshot("step6_data_tab_loaded.png")
+    # Robust Retry Loop for Table Loading & Screenshot Verification
+    print("Table element check karne ke liye custom verification loop shuru...")
+    table_loaded = False
+    for attempt in range(1, 7): # Total 6 attempts (Yani 30 seconds max check)
+        print(f"Attempt {attempt}: Table verify ki ja rahi hai...")
+        all_rows = driver.find_elements(By.XPATH, "//table[@bid='80']/tbody/tr")
+        
+        if len(all_rows) > 0:
+            print(f"SUCCESS: Table load ho gayi, {len(all_rows)} rows mili hain.")
+            table_loaded = True
+            driver.save_screenshot("step6_data_tab_loaded.png")
+            break
+        else:
+            print(f"Table abhi nahi mili. Capture kar rahe hain step6_attempt_{attempt}.png")
+            driver.save_screenshot(f"step6_attempt_{attempt}.png")
+            time.sleep(5)
+            
+    if not table_loaded:
+        print("CRITICAL: 30 seconds ke baad bhi table load nahi ho saki. Forcing final screenshot.")
+        driver.save_screenshot("step6_data_tab_loaded.png")
     
     # Dynamic Data Extraction: Pehli non-empty row dhoondhna
     print("Valid data row extract ho rahi hai...")
-    first_row_check = wait.until(EC.presence_of_element_located((By.XPATH, "//table[@bid='80']/tbody/tr")))
     all_rows = driver.find_elements(By.XPATH, "//table[@bid='80']/tbody/tr")
     
     period_label = None
