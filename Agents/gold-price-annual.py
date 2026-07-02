@@ -29,6 +29,9 @@ chrome_options.add_argument("--no-sandbox")
 chrome_options.add_argument("--disable-dev-shm-usage")
 chrome_options.add_argument("--disable-gpu")
 
+# FIX: DOM tree interactive hote hi script control le legi, infinite loading bypass hoga
+chrome_options.page_load_strategy = 'eager'
+
 # Automation detection bypass
 chrome_options.add_argument("--disable-blink-features=AutomationControlled")
 chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
@@ -53,12 +56,26 @@ def parse_fy_dates(period_label):
         return None, None
 
 try:
-    # 1. Go to URL
+    # 1. Go to URL with Robust Network Timeout Retry Loop
     print("Page open ho raha hai...")
-    try:
-        driver.get("https://data.rbi.org.in/DBIE/#/dbie/searchresult")
-    except Exception as e:
-        print(f"Initial load handle/timeout alert: {e}")
+    for attempt in range(1, 4):
+        try:
+            print(f"URL load attempt {attempt}/3...")
+            driver.get("https://data.rbi.org.in/DBIE/#/dbie/searchresult")
+            break
+        except Exception as e:
+            print(f"Attempt {attempt} me initial load timeout ya error aaya: {e}")
+            if attempt == 3:
+                raise e
+            print("Driver ko restart karke fresh session ke sath retry kar rahe hain...")
+            try:
+                driver.quit()
+            except Exception:
+                pass
+            time.sleep(5)
+            driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+            driver.set_page_load_timeout(50)
+            wait = WebDriverWait(driver, 35)
         
     print("Settle hone ke liye explicitly wait kar rahe hain...")
     time.sleep(12) 
@@ -232,5 +249,8 @@ try:
         print("Table me koi bhi valid non-empty row ya matching bid attribute nahi mila.")
 
 finally:
-    driver.quit()
+    try:
+        driver.quit()
+    except Exception:
+        pass
     print("Browser closed.")
