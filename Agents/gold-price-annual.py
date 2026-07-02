@@ -210,7 +210,26 @@ try:
             insert_resp = supabase.table(DESTINATION_TABLE).insert(data_to_insert).execute()
             print("Data successfully insert ho gaya.")
         else:
-            print(f"Year {period_label} ka data database me pehle se maujood hai. No changes made.")
+            # Entry already mil gayi hai, ab value cross-check karenge
+            existing_record = response.data[0]
+            existing_id = existing_record.get("id") # Primary Key check karne ke liye
+            existing_value = float(existing_record.get("value"))
+            
+            if existing_value != value:
+                print(f"Gadbadi mili! Supabase value: {existing_value} vs Extracted value: {value}. Correction shuru...")
+                
+                correction_note = f"corrected datapoint from {existing_value} to {value}"
+                
+                # Agar table me id primary key hai toh use karenge, nahi toh dataset_id aur period_label par filter karenge
+                query = supabase.table(DESTINATION_TABLE).update({"value": value, "note": correction_note})
+                if existing_id:
+                    update_resp = query.eq("id", existing_id).execute()
+                else:
+                    update_resp = query.eq("dataset_id", 1).eq("period_label", period_label).execute()
+                    
+                print(f"SUCCESS: Database correction done -> {correction_note}")
+            else:
+                print(f"Year {period_label} ka data perfectly match ho raha hai ({value}). Database up-to-date hai.")
     else:
         print("Table me koi bhi valid non-empty row ya matching bid attribute nahi mila.")
 
