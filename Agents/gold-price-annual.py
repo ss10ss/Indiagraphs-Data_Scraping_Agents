@@ -29,6 +29,9 @@ chrome_options.add_argument("--no-sandbox")
 chrome_options.add_argument("--disable-dev-shm-usage")
 chrome_options.add_argument("--disable-gpu")
 
+# FIX: Network render timeout aur freeze se bachne ke liye page_load_strategy 'none' kiya
+chrome_options.page_load_strategy = 'none'
+
 # Automation detection bypass
 chrome_options.add_argument("--disable-blink-features=AutomationControlled")
 chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
@@ -38,7 +41,6 @@ chrome_options.add_argument("--window-size=1366,768")
 chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
 
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
-driver.set_page_load_timeout(50) 
 wait = WebDriverWait(driver, 35)
 
 def parse_fy_dates(period_label):
@@ -55,11 +57,18 @@ def parse_fy_dates(period_label):
 try:
     # 1. Go to URL
     print("Page open ho raha hai...")
-    try:
-        driver.get("https://data.rbi.org.in/DBIE/#/dbie/searchresult")
-    except Exception as e:
-        print(f"Initial load handle/timeout alert: {e}")
+    driver.get("https://data.rbi.org.in/DBIE/#/dbie/searchresult")
         
+    print("DOM ke interactive hone ka manual check loop...")
+    for _ in range(30):
+        try:
+            state = driver.execute_script("return document.readyState;")
+            if state in ["interactive", "complete"]:
+                break
+        except Exception:
+            pass
+        time.sleep(1)
+
     print("Settle hone ke liye explicitly wait kar rahe hain...")
     time.sleep(12) 
     driver.save_screenshot("step1_initial_page.png")
@@ -76,7 +85,6 @@ try:
 
     # 2. Type "gold average" in search box
     print("Search box me text enter ho raha hai...")
-    # Robust Backup: Agar placeholder direct render nahi hua toh input type search direct target hoga
     search_box = wait.until(EC.presence_of_element_located((By.XPATH, "//input[@type='search' or @placeholder='Search']")))
     
     driver.execute_script("arguments[0].click();", search_box)
@@ -212,7 +220,7 @@ try:
         else:
             # Entry already mil gayi hai, ab value cross-check karenge
             existing_record = response.data[0]
-            existing_id = existing_record.get("id") # Primary Key check karne ke liye
+            existing_id = existing_record.get("id")
             existing_value = float(existing_record.get("value"))
             
             if existing_value != value:
@@ -220,7 +228,6 @@ try:
                 
                 correction_note = f"corrected datapoint from {existing_value} to {value}"
                 
-                # Agar table me id primary key hai toh use karenge, nahi toh dataset_id aur period_label par filter karenge
                 query = supabase.table(DESTINATION_TABLE).update({"value": value, "note": correction_note})
                 if existing_id:
                     update_resp = query.eq("id", existing_id).execute()
