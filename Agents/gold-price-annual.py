@@ -184,18 +184,31 @@ try:
     print("Aapke HTML structure ke mutabik data extract ho raha hai...")
     all_rows = driver.find_elements(By.XPATH, "//tr[./td[@bid='76']]")
     
+    # FIX: Top 5 entries ka data pehle extract karke Python list me hold karenge
+    scraped_data_list = []
+    for row in all_rows[:5]:
+        try:
+            p_label = row.find_element(By.XPATH, "./td[@bid='76']//span").get_attribute("textContent").strip()
+            g_raw = row.find_element(By.XPATH, "./td[@bid='72']//span").get_attribute("textContent").strip()
+            
+            if p_label and g_raw and g_raw != "":
+                val = float(g_raw.replace(',', '').strip())
+                scraped_data_list.append({"period_label": p_label, "value": val})
+        except Exception as e:
+            print(f"Initial raw parse error: {e}")
+            continue
+
+    # List ko reverse kar rahe hain taaki chronological data chunks database me sequence se jaayen (e.g., 2021-22 pehle, 2025-26 aakhiri me)
+    scraped_data_list.reverse()
+
     valid_rows_count = 0
     
-    for row in all_rows[:5][::-1]:
+    for item in scraped_data_list:
         try:
-            period_label = row.find_element(By.XPATH, "./td[@bid='76']//span").get_attribute("textContent").strip()
-            gold_mumbai_raw = row.find_element(By.XPATH, "./td[@bid='72']//span").get_attribute("textContent").strip()
+            period_label = item["period_label"]
+            value = item["value"]
             
-            if not period_label or not gold_mumbai_raw or gold_mumbai_raw == "":
-                continue
-                
             valid_rows_count += 1
-            value = float(gold_mumbai_raw.replace(',', '').strip())
             print(f"\nProcessing Row {valid_rows_count} -> Year: {period_label}, Price: {value}")
             
             # Har ek row ke liye alag se database check aur operation chalega
@@ -239,7 +252,7 @@ try:
                     print(f"Year {period_label} ka data perfectly match ho raha hai. Database up-to-date hai.")
                     
         except Exception as row_err:
-            print(f"Row parse karne me error (Skipping this row): {row_err}")
+            print(f"Row database update karne me error: {row_err}")
             continue
 
     if valid_rows_count == 0:
