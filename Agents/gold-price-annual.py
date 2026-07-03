@@ -186,7 +186,7 @@ try:
     
     valid_rows_count = 0
     
-    for row in all_rows:
+    for row in all_rows[:5]:
         try:
             period_label = row.find_element(By.XPATH, "./td[@bid='76']//span").get_attribute("textContent").strip()
             gold_mumbai_raw = row.find_element(By.XPATH, "./td[@bid='72']//span").get_attribute("textContent").strip()
