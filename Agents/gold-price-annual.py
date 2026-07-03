@@ -226,7 +226,7 @@ try:
                 
                 if existing_value != value:
                     print(f"Gadbadi mili! Supabase value: {existing_value} vs Extracted value: {value}. Correction shuru...")
-                    correction_note = f"corrected datapoint from {existing_value} to {value}"
+                    correction_note = f"Updated datapoint from {existing_value} to {value}"
                     
                     query = supabase.table(DESTINATION_TABLE).update({"value": value, "note": correction_note})
                     if existing_id:
