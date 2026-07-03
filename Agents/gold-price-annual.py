@@ -180,73 +180,72 @@ try:
         print("CRITICAL: Table load nahi ho saki. Forcing final screenshot.")
         driver.save_screenshot("step6_data_tab_loaded.png")
     
-    # Dynamic Data Extraction: Aapke diye HTML match logic ke mutabik parsing
+    # Dynamic Data Extraction: Loop poori table ke saare rows ko process karega
     print("Aapke HTML structure ke mutabik data extract ho raha hai...")
     all_rows = driver.find_elements(By.XPATH, "//tr[./td[@bid='76']]")
     
-    period_label = None
-    gold_mumbai_raw = None
+    valid_rows_count = 0
     
     for row in all_rows:
         try:
-            p_label = row.find_element(By.XPATH, "./td[@bid='76']//span").get_attribute("textContent").strip()
-            g_raw = row.find_element(By.XPATH, "./td[@bid='72']//span").get_attribute("textContent").strip()
+            period_label = row.find_element(By.XPATH, "./td[@bid='76']//span").get_attribute("textContent").strip()
+            gold_mumbai_raw = row.find_element(By.XPATH, "./td[@bid='72']//span").get_attribute("textContent").strip()
             
-            if p_label and g_raw and g_raw != "":
-                period_label = p_label
-                gold_mumbai_raw = g_raw
-                break
-        except Exception:
+            if not period_label or not gold_mumbai_raw or gold_mumbai_raw == "":
+                continue
+                
+            valid_rows_count += 1
+            value = float(gold_mumbai_raw.replace(',', '').strip())
+            print(f"\nProcessing Row {valid_rows_count} -> Year: {period_label}, Price: {value}")
+            
+            # Har ek row ke liye alag se database check aur operation chalega
+            response = supabase.table(DESTINATION_TABLE).select("*").eq("dataset_id", 1).eq("period_label", period_label).execute()
+            
+            if len(response.data) == 0:
+                print(f"Data missing mila! Database table '{DESTINATION_TABLE}' me insert ho raha hai...")
+                period_start, period_end = parse_fy_dates(period_label)
+                
+                data_to_insert = {
+                    "dataset_id": 1,
+                    "period_type": "FY",
+                    "period_label": period_label,
+                    "period_start": period_start,
+                    "period_end": period_end,
+                    "value": value,
+                    "note": "NEW",
+                    "is_active": False,
+                    "created_by": "AUTOMATION"
+                }
+                
+                insert_resp = supabase.table(DESTINATION_TABLE).insert(data_to_insert).execute()
+                print(f"SUCCESS: Year {period_label} ka missing data insert ho gaya.")
+            else:
+                existing_record = response.data[0]
+                existing_id = existing_record.get("id")
+                existing_value = float(existing_record.get("value"))
+                
+                if existing_value != value:
+                    print(f"Gadbadi mili! Supabase value: {existing_value} vs Extracted value: {value}. Correction shuru...")
+                    correction_note = f"corrected datapoint from {existing_value} to {value}"
+                    
+                    query = supabase.table(DESTINATION_TABLE).update({"value": value, "note": correction_note})
+                    if existing_id:
+                        update_resp = query.eq("id", existing_id).execute()
+                    else:
+                        update_resp = query.eq("dataset_id", 1).eq("period_label", period_label).execute()
+                        
+                    print(f"SUCCESS: Database correction done -> {correction_note}")
+                else:
+                    print(f"Year {period_label} ka data perfectly match ho raha hai. Database up-to-date hai.")
+                    
+        except Exception as row_err:
+            print(f"Row parse karne me error (Skipping this row): {row_err}")
             continue
 
-    print(f"Extracted Data -> Year: {period_label}, Price: {gold_mumbai_raw}")
-    
-    if period_label and gold_mumbai_raw:
-        value = float(gold_mumbai_raw.replace(',', '').strip())
-        
-        print(f"Database table '{DESTINATION_TABLE}' me existing record check ho raha hai...")
-        response = supabase.table(DESTINATION_TABLE).select("*").eq("dataset_id", 1).eq("period_label", period_label).execute()
-        
-        if len(response.data) == 0:
-            print(f"Naya data mila! Database table '{DESTINATION_TABLE}' me insert ho raha hai...")
-            period_start, period_end = parse_fy_dates(period_label)
-            
-            data_to_insert = {
-                "dataset_id": 1,
-                "period_type": "FY",
-                "period_label": period_label,
-                "period_start": period_start,
-                "period_end": period_end,
-                "value": value,
-                "note": "NEW",
-                "is_active": False,
-                "created_by": "AUTOMATION"
-            }
-            
-            insert_resp = supabase.table(DESTINATION_TABLE).insert(data_to_insert).execute()
-            print("Data successfully insert ho gaya.")
-        else:
-            # Entry already mil gayi hai, ab value cross-check karenge aur galat milne par auto-correct karenge
-            existing_record = response.data[0]
-            existing_id = existing_record.get("id")
-            existing_value = float(existing_record.get("value"))
-            
-            if existing_value != value:
-                print(f"Gadbadi mili! Supabase value: {existing_value} vs Extracted value: {value}. Correction shuru...")
-                
-                correction_note = f"corrected datapoint from {existing_value} to {value}"
-                
-                query = supabase.table(DESTINATION_TABLE).update({"value": value, "note": correction_note})
-                if existing_id:
-                    update_resp = query.eq("id", existing_id).execute()
-                else:
-                    update_resp = query.eq("dataset_id", 1).eq("period_label", period_label).execute()
-                    
-                print(f"SUCCESS: Database correction done -> {correction_note}")
-            else:
-                print(f"Year {period_label} ka data perfectly match ho raha hai ({value}). Database up-to-date hai.")
-    else:
+    if valid_rows_count == 0:
         print("Table me koi bhi valid non-empty row ya matching bid attribute nahi mila.")
+    else:
+        print(f"\nScraping complete! Total {valid_rows_count} rows process ki gayi hain.")
 
 finally:
     try:
