@@ -12,7 +12,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 from supabase import create_client, Client
 
 # =====================================================================
-# CONFIGURATION: Monthly Scraper Target Table
+# CONFIGURATION: Target Table & Dataset Specs
 # =====================================================================
 DESTINATION_TABLE = "automation_test" 
 DATASET_ID = 110
@@ -36,6 +36,7 @@ chrome_options.page_load_strategy = 'eager'
 chrome_options.add_argument("--disable-blink-features=AutomationControlled")
 chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
 chrome_options.add_experimental_option("useAutomationExtension", False)
+
 chrome_options.add_argument("--window-size=1366,768")
 chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
 
@@ -45,7 +46,7 @@ wait = WebDriverWait(driver, 35)
 
 def parse_monthly_dates(period_label):
     """
-    Format handle karta hai: 'Mar 2026' ya 'MAR 2025' -> (2026-03-01, 2026-03-31)
+    Format handle karta hai: 'Mar 2026' -> (2026-03-01, 2026-03-31)
     """
     try:
         parts = period_label.strip().split()
@@ -53,13 +54,10 @@ def parse_monthly_dates(period_label):
             return None, None
         
         month_str, year_str = parts[0].title(), parts[1]
-        
-        # Month name se month number nikalna (e.g., 'Mar' -> 3)
         month_modules = {v: k for k, v in enumerate(calendar.month_abbr)}
         month_num = month_modules.get(month_str[:3])
         
         if not month_num:
-            # Full month name mapping fallback
             month_modules_full = {v: k for k, v in enumerate(calendar.month_name)}
             month_num = month_modules_full.get(month_str)
             
@@ -67,8 +65,6 @@ def parse_monthly_dates(period_label):
             return None, None
             
         year = int(year_str)
-        
-        # Month ki starting aur ending date nikalna
         start_date = f"{year}-{month_num:02d}-01"
         last_day = calendar.monthrange(year, month_num)[1]
         end_date = f"{year}-{month_num:02d}-{last_day:02d}"
@@ -89,6 +85,10 @@ try:
             print(f"Attempt {attempt} me error aaya: {e}")
             if attempt == 3:
                 raise e
+            try:
+                driver.quit()
+            except Exception:
+                pass
             time.sleep(5)
             driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
             driver.set_page_load_timeout(50)
@@ -96,6 +96,7 @@ try:
         
     print("Settle hone ke liye explicitly wait kar rahe hain...")
     time.sleep(12) 
+    driver.save_screenshot("step1_initial_page.png")
     
     try:
         alert = driver.switch_to.alert
@@ -110,25 +111,28 @@ try:
     driver.execute_script("arguments[0].value = '';", search_box)
     search_box.send_keys("gold average")
     time.sleep(3)  
+    driver.save_screenshot("step2_search_text_entered.png")
     
     print("Dropdown select ho raha hai...")
     dropdown_element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "select.dropdown")))
     select = Select(dropdown_element)
     select.select_by_value("oneormorewords")
     time.sleep(3)  
+    driver.save_screenshot("step3_dropdown_selected.png")
     
     print("Update Results button par click ho raha hai...")
     update_btn = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "button.search_button")))
     driver.execute_script("arguments[0].click();", update_btn)
     time.sleep(8)  
+    driver.save_screenshot("step4_results_updated.png")
     
-    # FIX: Specially Monthly matching target link (3rd Link) par click karne ke liye XPATH
     print("Monthly Link par click ho raha hai...")
     monthly_link = wait.until(EC.presence_of_element_located((By.XPATH, "//a[contains(text(), 'Monthly Average Price of Gold and Silver')]")))
     
     main_window = driver.current_window_handle
     driver.execute_script("arguments[0].click();", monthly_link)
     time.sleep(12)
+    driver.save_screenshot("step5_link_clicked.png")
     
     current_handles = driver.window_handles
     if len(current_handles) > 1:
@@ -144,55 +148,80 @@ try:
     try:
         iframe_element = wait.until(EC.presence_of_element_located((By.XPATH, "//iframe | //frame")))
         driver.switch_to.frame(iframe_element)
-        print("Inside data iframe switched.")
+        print("Successfully switched inside data iframe.")
     except Exception as iframe_err:
-        print(f"Standard context fallback: {iframe_err}")
+        print(f"Iframe context fallback: {iframe_err}")
 
-    print("Table cells validation loop shuru...")
+    print("Table elements validation loop shuru...")
     table_loaded = False
     for attempt in range(1, 7): 
-        all_rows = driver.find_elements(By.XPATH, "//td[@bid='76' or @bid='72']/ancestor::tr")
-        if len(all_rows) > 0:
-            print(f"SUCCESS: Table load ho gayi, {len(all_rows)} elements target ho chuke hain.")
+        # Naye codes ke hisab se elements validating (th for year block, td for values)
+        all_elements = driver.find_elements(By.XPATH, "//*[@bid='4827' or @bid='4826' or @bid='4944']")
+        if len(all_elements) > 0:
+            print(f"SUCCESS: Table load ho gayi, elements mil chuke hain.")
             table_loaded = True
+            driver.save_screenshot("step6_data_tab_loaded.png")
             break
         else:
+            driver.save_screenshot(f"step6_attempt_{attempt}.png")
             time.sleep(5)
             
     if not table_loaded:
+        driver.save_screenshot("step6_data_tab_loaded.png")
         raise Exception("CRITICAL: Table load nahi ho saki.")
     
-    print("Monthly Data extract ho raha hai...")
-    all_rows = driver.find_elements(By.XPATH, "//tr[./td[@bid='76']]")
+    print("Monthly Data processing shuru...")
+    # Table ke saare row elements traverse karenge line se order maintain karne ke liye
+    table_rows = driver.find_elements(By.XPATH, "//tr[th[@bid='4944'] or td[@bid='4827']]")
     
-    # Top 5 entries ka data collect karenge (Latest months)
     scraped_data_list = []
-    for row in all_rows[:5]:
+    current_fy = None
+    
+    for row in table_rows:
         try:
-            p_label = row.find_element(By.XPATH, "./td[@bid='76']//span").get_attribute("textContent").strip()
-            g_raw = row.find_element(By.XPATH, "./td[@bid='72']//span").get_attribute("textContent").strip()
+            # Check karenge ki kya yeh ek Year head row (th) hai?
+            year_headers = row.find_elements(By.XPATH, "./th[@bid='4944']//span")
+            if year_headers:
+                current_fy = year_headers[0].get_attribute("textContent").strip()
+                continue
+                
+            # Agar yeh data row hai, toh month aur value nikalenge
+            month_elements = row.find_elements(By.XPATH, "./td[@bid='4827' and @c='0']//span")
+            val_elements = row.find_elements(By.XPATH, "./td[@bid='4826' and @c='1']//span")
             
-            # Sub-headers (jaise Year headers '2026-27') ko filter karne ke liye condition
-            if p_label and "-" not in p_label and g_raw and g_raw != "":
-                val = float(g_raw.replace(',', '').strip())
-                scraped_data_list.append({"period_label": p_label, "value": val})
-        except Exception as e:
+            if month_elements and val_elements and current_fy:
+                raw_month = month_elements[0].get_attribute("textContent").strip().title() # e.g., 'Apr'
+                raw_val = val_elements[0].get_attribute("textContent").strip()
+                
+                if raw_month and raw_val:
+                    # Logic: Year bracket nikalna (e.g. 2025-26 se '2025' ya '2026')
+                    # April se December tak start_year hoga, Jan se March tak end_year hoga
+                    fy_start = int(current_fy.split('-')[0].strip())
+                    fy_end = int(current_fy.split('-')[1].strip())
+                    if len(str(fy_end)) == 2:
+                        fy_end = int(str(fy_start)[:2] + str(fy_end))
+                        
+                    target_year = fy_end if raw_month.upper() in ["JAN", "FEB", "MAR"] else fy_start
+                    full_period_label = f"{raw_month} {target_year}" # Result: 'Mar 2026'
+                    
+                    val = float(raw_val.replace(',', '').strip())
+                    scraped_data_list.append({"period_label": full_period_label, "value": val})
+        except Exception:
             continue
 
-    # Chronological indexing set karne ke liye list ko reverse (purane se naya) karenge
+    # Sirf top 5 latest months ka chunks process karenge
+    scraped_data_list = scraped_data_list[:5]
     scraped_data_list.reverse()
 
     valid_rows_count = 0
-    
     for item in scraped_data_list:
         try:
-            period_label = item["period_label"]  # Example: "Mar 2026"
+            period_label = item["period_label"]
             value = item["value"]
             
             valid_rows_count += 1
             print(f"\nProcessing Monthly Row {valid_rows_count} -> Month: {period_label}, Price: {value}")
             
-            # Database check with dataset_id = 110
             response = supabase.table(DESTINATION_TABLE).select("*").eq("dataset_id", DATASET_ID).eq("period_label", period_label).execute()
             
             if len(response.data) == 0:
@@ -207,7 +236,7 @@ try:
                     "period_end": period_end,
                     "value": value,
                     "note": "NEW",
-                    "is_active": True,  # Monthly screenshot ke hisab se TRUE
+                    "is_active": True,  
                     "created_by": "AUTOMATION"
                 }
                 
@@ -233,7 +262,7 @@ try:
                     print(f"Month {period_label} ka data perfectly match ho raha hai.")
                     
         except Exception as row_err:
-            print(f"Row database operation error: {row_err}")
+            print(f"Row operation error: {row_err}")
             continue
 
     print(f"\nScraping complete! Total {valid_rows_count} monthly rows process ki gayi hain.")
