@@ -1,0 +1,25 @@
+name: Gold Price Monthly Scraper
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 12 * *' # Example schedule (Monthly run)
+
+jobs:
+  gold-price-monthly: # Job name file name se match karta hua
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Install dependencies
+        run: |
+          pip install selenium webdriver-manager supabase
+      - name: Run Script
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python gold-price-monthly.py
