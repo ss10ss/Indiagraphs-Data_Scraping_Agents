@@ -13,7 +13,7 @@ from supabase import create_client, Client
 # =====================================================================
 # CONFIGURATION: Jab live karna ho, toh bas yahan table ka naam badal dein
 # =====================================================================
-DESTINATION_TABLE = "automation_test" 
+DESTINATION_TABLE = "data_points" 
 # =====================================================================
 
 # Supabase Credentials
