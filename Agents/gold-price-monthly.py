@@ -106,29 +106,56 @@ try:
         pass
 
     print("Search box me 'gold average' enter ho raha hai...")
-    search_box = wait.until(EC.presence_of_element_located((By.XPATH, "//input[@type='search' or @placeholder='Search']")))
-    driver.execute_script("arguments[0].click();", search_box)
-    driver.execute_script("arguments[0].value = '';", search_box)
-    search_box.send_keys("gold average")
-    time.sleep(3)  
+    search_box = wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@type='search' or @placeholder='Search']")))
+    
+    # Text Typing & Explicit Verification Loop (Bypasses silent text input failures)
+    input_verified = False
+    for input_attempt in range(3):
+        driver.execute_script("arguments[0].click();", search_box)
+        driver.execute_script("arguments[0].value = '';", search_box)
+        search_box.clear()
+        search_box.send_keys("gold average")
+        time.sleep(2)
+        
+        entered_text = search_box.get_attribute("value")
+        if entered_text and "gold" in entered_text.lower():
+            print("SUCCESS: Search box text verification clear.")
+            input_verified = True
+            break
+        print(f"WARNING: Input verification fail (Got: '{entered_text}'). Retrying...")
+    
+    if not input_verified:
+        driver.save_screenshot("error_input_failed.png")
+        raise Exception("CRITICAL: Search box me text fill nahi ho paya.")
+
     driver.save_screenshot("step2_search_text_entered.png")
     
     print("Dropdown select ho raha hai...")
-    dropdown_element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "select.dropdown")))
+    dropdown_element = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "select.dropdown")))
     select = Select(dropdown_element)
     select.select_by_value("oneormorewords")
-    time.sleep(3)  
+    time.sleep(2)  
     driver.save_screenshot("step3_dropdown_selected.png")
     
     print("Update Results button par click ho raha hai...")
-    update_btn = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "button.search_button")))
+    update_btn = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "button.search_button")))
+    
+    # Click and Result Render Verification
     driver.execute_script("arguments[0].click();", update_btn)
-    time.sleep(8)  
+    print("Waiting for results link to render dynamically...")
+    
+    try:
+        # Check if target link becomes present inside DOM after clicking update results
+        monthly_link = wait.until(EC.presence_of_element_located((By.XPATH, "//a[contains(text(), 'Monthly Average Price of Gold and Silver')]")))
+        print("SUCCESS: Target link dynamically located.")
+    except Exception as link_ex:
+        driver.save_screenshot("error_link_not_found.png")
+        print("CRITICAL: Click verification timeout. 'Monthly...' link could not be located in DOM.")
+        raise link_ex
+
     driver.save_screenshot("step4_results_updated.png")
     
     print("Monthly Link par click ho raha hai...")
-    monthly_link = wait.until(EC.presence_of_element_located((By.XPATH, "//a[contains(text(), 'Monthly Average Price of Gold and Silver')]")))
-    
     main_window = driver.current_window_handle
     driver.execute_script("arguments[0].click();", monthly_link)
     time.sleep(12)
@@ -155,7 +182,6 @@ try:
     print("Table elements validation loop shuru...")
     table_loaded = False
     for attempt in range(1, 7): 
-        # Naye codes ke hisab se elements validating (th for year block, td for values)
         all_elements = driver.find_elements(By.XPATH, "//*[@bid='4827' or @bid='4826' or @bid='4944']")
         if len(all_elements) > 0:
             print(f"SUCCESS: Table load ho gayi, elements mil chuke hain.")
@@ -171,7 +197,6 @@ try:
         raise Exception("CRITICAL: Table load nahi ho saki.")
     
     print("Monthly Data processing shuru...")
-    # Table ke saare row elements traverse karenge line se order maintain karne ke liye
     table_rows = driver.find_elements(By.XPATH, "//tr[th[@bid='4944'] or td[@bid='4827']]")
     
     scraped_data_list = []
@@ -179,37 +204,32 @@ try:
     
     for row in table_rows:
         try:
-            # Check karenge ki kya yeh ek Year head row (th) hai?
             year_headers = row.find_elements(By.XPATH, "./th[@bid='4944']//span")
             if year_headers:
                 current_fy = year_headers[0].get_attribute("textContent").strip()
                 continue
                 
-            # Agar yeh data row hai, toh month aur value nikalenge
             month_elements = row.find_elements(By.XPATH, "./td[@bid='4827' and @c='0']//span")
             val_elements = row.find_elements(By.XPATH, "./td[@bid='4826' and @c='1']//span")
             
             if month_elements and val_elements and current_fy:
-                raw_month = month_elements[0].get_attribute("textContent").strip().title() # e.g., 'Apr'
+                raw_month = month_elements[0].get_attribute("textContent").strip().title()
                 raw_val = val_elements[0].get_attribute("textContent").strip()
                 
                 if raw_month and raw_val:
-                    # Logic: Year bracket nikalna (e.g. 2025-26 se '2025' ya '2026')
-                    # April se December tak start_year hoga, Jan se March tak end_year hoga
                     fy_start = int(current_fy.split('-')[0].strip())
                     fy_end = int(current_fy.split('-')[1].strip())
                     if len(str(fy_end)) == 2:
                         fy_end = int(str(fy_start)[:2] + str(fy_end))
                         
                     target_year = fy_end if raw_month.upper() in ["JAN", "FEB", "MAR"] else fy_start
-                    full_period_label = f"{raw_month} {target_year}" # Result: 'Mar 2026'
+                    full_period_label = f"{raw_month} {target_year}"
                     
                     val = float(raw_val.replace(',', '').strip())
                     scraped_data_list.append({"period_label": full_period_label, "value": val})
         except Exception:
             continue
 
-    # Sirf top 5 latest months ka chunks process karenge
     scraped_data_list = scraped_data_list[:5]
     scraped_data_list.reverse()
 
@@ -236,7 +256,7 @@ try:
                     "period_end": period_end,
                     "value": value,
                     "note": "NEW",
-                    "is_active": False,  
+                    "is_active": False,  # Kept strictly FALSE as expected 
                     "created_by": "AUTOMATION"
                 }
                 
