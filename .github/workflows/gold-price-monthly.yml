@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  gold-price-monthly:      # Workflow name aligned perfectly
+  gold-price-monthly:
     runs-on: ubuntu-latest
 
     steps:
