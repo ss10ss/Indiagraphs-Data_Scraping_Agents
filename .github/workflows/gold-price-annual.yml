@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  scrape:
+  gold-price-annual:
     runs-on: ubuntu-latest
 
     steps:
