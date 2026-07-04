@@ -236,7 +236,7 @@ try:
                     "period_end": period_end,
                     "value": value,
                     "note": "NEW",
-                    "is_active": True,  
+                    "is_active": FALSE,  
                     "created_by": "AUTOMATION"
                 }
                 
