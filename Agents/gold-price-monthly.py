@@ -202,7 +202,7 @@ try:
                     full_period_label = f"{raw_month} {target_year}"
                     
                     # Floats ke decimal issues bachane ke liye round off to 2 decimal places kiya hai
-                    val = round(float(raw_val.replace(',', '').strip()), 2)
+                    val = int(round(float(raw_val.replace(',', '').strip())))
                     scraped_data_list.append({"period_label": full_period_label, "value": val})
         except Exception:
             continue
