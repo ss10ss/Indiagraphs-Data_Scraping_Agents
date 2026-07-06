@@ -237,11 +237,8 @@ try:
                     "created_by": "AUTOMATION"
                 }
                 
-                try:
-                    insert_resp = supabase.table(DESTINATION_TABLE).insert(data_to_insert).execute()
-                    print(f"SUCCESS: Month {period_label} ka missing data insert ho gaya.")
-                except Exception as e:
-                    print(f"!!! INSERTION FAILED for {period_label} due to: {e}")
+                insert_resp = supabase.table(DESTINATION_TABLE).insert(data_to_insert).execute()
+                print(f"SUCCESS: Month {period_label} ka missing data insert ho gaya.")
             else:
                 existing_record = response.data[0]
                 existing_id = existing_record.get("id")
