@@ -14,7 +14,7 @@ from supabase import create_client, Client
 # =====================================================================
 # CONFIGURATION: Target Table & Dataset Specs
 # =====================================================================
-DESTINATION_TABLE = "data_points" 
+DESTINATION_TABLE = "automation_test" 
 DATASET_ID = 110
 # =====================================================================
 
@@ -106,58 +106,33 @@ try:
         pass
 
     print("Search box me 'gold average' enter ho raha hai...")
-    search_box = wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@type='search' or @placeholder='Search']")))
-    
-    # Text Typing & Explicit Verification Loop (Bypasses silent text input failures)
-    input_verified = False
-    for input_attempt in range(3):
-        driver.execute_script("arguments[0].click();", search_box)
-        driver.execute_script("arguments[0].value = '';", search_box)
-        search_box.clear()
-        search_box.send_keys("gold average")
-        time.sleep(2)
-        
-        entered_text = search_box.get_attribute("value")
-        if entered_text and "gold" in entered_text.lower():
-            print("SUCCESS: Search box text verification clear.")
-            input_verified = True
-            break
-        print(f"WARNING: Input verification fail (Got: '{entered_text}'). Retrying...")
-    
-    if not input_verified:
-        driver.save_screenshot("error_input_failed.png")
-        raise Exception("CRITICAL: Search box me text fill nahi ho paya.")
-
+    search_box = wait.until(EC.presence_of_element_located((By.XPATH, "//input[@type='search' or @placeholder='Search']")))
+    driver.execute_script("arguments[0].click();", search_box)
+    driver.execute_script("arguments[0].value = '';", search_box)
+    search_box.send_keys("gold average")
+    time.sleep(3)  
     driver.save_screenshot("step2_search_text_entered.png")
     
     print("Dropdown select ho raha hai...")
-    dropdown_element = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "select.dropdown")))
+    dropdown_element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "select.dropdown")))
     select = Select(dropdown_element)
     select.select_by_value("oneormorewords")
-    time.sleep(2)  
+    time.sleep(3)  
     driver.save_screenshot("step3_dropdown_selected.png")
     
     print("Update Results button par click ho raha hai...")
-    update_btn = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "button.search_button")))
-    
-    # Click and Result Render Verification
+    update_btn = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "button.search_button")))
     driver.execute_script("arguments[0].click();", update_btn)
-    print("Waiting for results link to render dynamically...")
-    
-    try:
-        # Check if target link becomes present inside DOM after clicking update results
-        monthly_link = wait.until(EC.presence_of_element_located((By.XPATH, "//a[contains(text(), 'Monthly Average Price of Gold and Silver')]")))
-        print("SUCCESS: Target link dynamically located.")
-    except Exception as link_ex:
-        driver.save_screenshot("error_link_not_found.png")
-        print("CRITICAL: Click verification timeout. 'Monthly...' link could not be located in DOM.")
-        raise link_ex
-
+    time.sleep(8)  
     driver.save_screenshot("step4_results_updated.png")
     
     print("Monthly Link par click ho raha hai...")
+    monthly_link = wait.until(EC.presence_of_element_located((By.XPATH, "//a[contains(text(), 'Monthly Average Price of Gold and Silver')]")))
+    
     main_window = driver.current_window_handle
     driver.execute_script("arguments[0].click();", monthly_link)
+    
+    print("Link click ho gaya. Tabs check karne ke liye safe hold...")
     time.sleep(12)
     driver.save_screenshot("step5_link_clicked.png")
     
@@ -169,6 +144,7 @@ try:
                 print("Naye tab par switch successfully ho gaye.")
                 break
             
+    print("Loading spinner ke khatam hone ka explicit wait...")
     time.sleep(8)
 
     print("Iframe dhoondh kar switch kiya ja raha hai...")
@@ -256,7 +232,7 @@ try:
                     "period_end": period_end,
                     "value": value,
                     "note": "NEW",
-                    "is_active": False,  # Kept strictly FALSE as expected 
+                    "is_active": False,  # Kept strictly FALSE as requested 
                     "created_by": "AUTOMATION"
                 }
                 
