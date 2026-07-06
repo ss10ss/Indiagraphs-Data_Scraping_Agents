@@ -14,7 +14,7 @@ from supabase import create_client, Client
 # =====================================================================
 # CONFIGURATION: Target Table & Dataset Specs
 # =====================================================================
-DESTINATION_TABLE = "automation_test" 
+DESTINATION_TABLE = "data_points" 
 DATASET_ID = 110
 # =====================================================================
 
