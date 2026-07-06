@@ -14,7 +14,7 @@ from supabase import create_client, Client
 # =====================================================================
 # CONFIGURATION: Target Table & Dataset Specs
 # =====================================================================
-DESTINATION_TABLE = "data_points" 
+DESTINATION_TABLE = "automation_test" 
 DATASET_ID = 110
 # =====================================================================
 
@@ -201,7 +201,8 @@ try:
                     target_year = fy_end if raw_month.upper() in ["JAN", "FEB", "MAR"] else fy_start
                     full_period_label = f"{raw_month} {target_year}"
                     
-                    val = float(raw_val.replace(',', '').strip())
+                    # Floats ke decimal issues bachane ke liye round off to 2 decimal places kiya hai
+                    val = round(float(raw_val.replace(',', '').strip()), 2)
                     scraped_data_list.append({"period_label": full_period_label, "value": val})
         except Exception:
             continue
@@ -232,7 +233,7 @@ try:
                     "period_end": period_end,
                     "value": value,
                     "note": "NEW",
-                    "is_active": False,  # Kept strictly FALSE as requested 
+                    "is_active": False,  
                     "created_by": "AUTOMATION"
                 }
                 
