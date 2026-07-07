@@ -41,8 +41,11 @@ chrome_options.add_argument("--window-size=1366,768")
 chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
 
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
-driver.set_page_load_timeout(50) 
-wait = WebDriverWait(driver, 35)
+# Page load timeout badhaya 50 -> 90, kyunki renderer timeout 48s pe hi hit ho raha tha CI me
+driver.set_page_load_timeout(90)
+# Explicit wait timeout badhaya 35 -> 60, DBIE ka variable load time absorb karne ke liye
+wait = WebDriverWait(driver, 60)
+
 
 def parse_monthly_dates(period_label):
     """
@@ -74,6 +77,32 @@ def parse_monthly_dates(period_label):
         print(f"Monthly Date parse karne me error: {e}")
         return None, None
 
+
+def wait_for_new_tab(driver, main_window, timeout=30, poll=0.5):
+    """Fixed sleep ki jagah — jab tak naya tab actually na khule, poll karte raho."""
+    end_time = time.time() + timeout
+    while time.time() < end_time:
+        handles = driver.window_handles
+        if len(handles) > 1:
+            return handles
+        time.sleep(poll)
+    return driver.window_handles
+
+
+def wait_for_table_elements(driver, xpath, timeout=60, poll=2):
+    """Fixed 6-attempt loop ki jagah — actual timeout tak poll karo, sirf attempt count tak nahi."""
+    end_time = time.time() + timeout
+    attempt = 0
+    while time.time() < end_time:
+        attempt += 1
+        elements = driver.find_elements(By.XPATH, xpath)
+        if len(elements) > 0:
+            return elements, attempt
+        driver.save_screenshot(f"step6_attempt_{attempt}.png")
+        time.sleep(poll)
+    return [], attempt
+
+
 try:
     print("Page open ho raha hai...")
     for attempt in range(1, 4):
@@ -91,39 +120,38 @@ try:
                 pass
             time.sleep(5)
             driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
-            driver.set_page_load_timeout(50)
-            wait = WebDriverWait(driver, 35)
+            driver.set_page_load_timeout(90)
+            wait = WebDriverWait(driver, 60)
         
-    print("Settle hone ke liye explicitly wait kar rahe hain...")
-    time.sleep(12) 
     driver.save_screenshot("step1_initial_page.png")
     
     try:
         alert = driver.switch_to.alert
         alert.dismiss()
-        time.sleep(3)
+        time.sleep(2)
     except Exception:
         pass
 
+    # Fixed time.sleep(12) hataya — search_box ke liye wait.until already
+    # DBIE ke actual render hone tak (10s ho ya 25s ho) poll karta rahega, hardcoded 12s nahi.
     print("Search box me 'gold average' enter ho raha hai...")
     search_box = wait.until(EC.presence_of_element_located((By.XPATH, "//input[@type='search' or @placeholder='Search']")))
     driver.execute_script("arguments[0].click();", search_box)
     driver.execute_script("arguments[0].value = '';", search_box)
     search_box.send_keys("gold average")
-    time.sleep(3)  
     driver.save_screenshot("step2_search_text_entered.png")
     
     print("Dropdown select ho raha hai...")
     dropdown_element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "select.dropdown")))
     select = Select(dropdown_element)
     select.select_by_value("oneormorewords")
-    time.sleep(3)  
     driver.save_screenshot("step3_dropdown_selected.png")
     
     print("Update Results button par click ho raha hai...")
     update_btn = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "button.search_button")))
     driver.execute_script("arguments[0].click();", update_btn)
-    time.sleep(8)  
+    # Fixed sleep(8) hataya — seedha next element (monthly_link) ka wait.until
+    # actual load hone tak poll karega
     driver.save_screenshot("step4_results_updated.png")
     
     print("Monthly Link par click ho raha hai...")
@@ -132,23 +160,20 @@ try:
     main_window = driver.current_window_handle
     driver.execute_script("arguments[0].click();", monthly_link)
     
-    print("Link click ho gaya. Tabs check karne ke liye safe hold...")
-    time.sleep(12)
+    print("Naya tab open hone ka explicit poll wait...")
+    current_handles = wait_for_new_tab(driver, main_window, timeout=30)
     driver.save_screenshot("step5_link_clicked.png")
     
-    current_handles = driver.window_handles
     if len(current_handles) > 1:
         for handle in current_handles:
             if handle != main_window:
                 driver.switch_to.window(handle)
                 print("Naye tab par switch successfully ho gaye.")
                 break
-            
-    print("Loading spinner ke khatam hone ka explicit wait...")
-    time.sleep(8)
 
     print("Iframe dhoondh kar switch kiya ja raha hai...")
     try:
+        # Iframe wait bhi 60s tak poll karega (wait object ka timeout use ho raha hai)
         iframe_element = wait.until(EC.presence_of_element_located((By.XPATH, "//iframe | //frame")))
         driver.switch_to.frame(iframe_element)
         print("Successfully switched inside data iframe.")
@@ -156,21 +181,18 @@ try:
         print(f"Iframe context fallback: {iframe_err}")
 
     print("Table elements validation loop shuru...")
-    table_loaded = False
-    for attempt in range(1, 7): 
-        all_elements = driver.find_elements(By.XPATH, "//*[@bid='4827' or @bid='4826' or @bid='4944']")
-        if len(all_elements) > 0:
-            print(f"SUCCESS: Table load ho gayi, elements mil chuke hain.")
-            table_loaded = True
-            driver.save_screenshot("step6_data_tab_loaded.png")
-            break
-        else:
-            driver.save_screenshot(f"step6_attempt_{attempt}.png")
-            time.sleep(5)
-            
+    all_elements, attempts_taken = wait_for_table_elements(
+        driver,
+        "//*[@bid='4827' or @bid='4826' or @bid='4944']",
+        timeout=60,
+        poll=3
+    )
+    table_loaded = len(all_elements) > 0
+    driver.save_screenshot("step6_data_tab_loaded.png")
+
     if not table_loaded:
-        driver.save_screenshot("step6_data_tab_loaded.png")
-        raise Exception("CRITICAL: Table load nahi ho saki.")
+        raise Exception(f"CRITICAL: Table load nahi ho saki ({attempts_taken} attempts, 60s timeout ke baad bhi).")
+    print(f"SUCCESS: Table load ho gayi ({attempts_taken} attempts me).")
     
     print("Monthly Data processing shuru...")
     table_rows = driver.find_elements(By.XPATH, "//tr[th[@bid='4944'] or td[@bid='4827']]")
@@ -201,7 +223,6 @@ try:
                     target_year = fy_end if raw_month.upper() in ["JAN", "FEB", "MAR"] else fy_start
                     full_period_label = f"{raw_month} {target_year}"
                     
-                    # Floats ke decimal issues bachane ke liye round off to 2 decimal places kiya hai
                     val = int(round(float(raw_val.replace(',', '').strip())))
                     scraped_data_list.append({"period_label": full_period_label, "value": val})
         except Exception:
@@ -209,6 +230,11 @@ try:
 
     scraped_data_list = scraped_data_list[:5]
     scraped_data_list.reverse()
+
+    # Naya safety check: agar parsing ke baad bhi zero rows hain, silently pass hone ke bajaye
+    # explicitly fail karo taaki GitHub Actions run red ho aur pata chale
+    if len(scraped_data_list) == 0:
+        raise Exception("CRITICAL: Table load toh hui lekin zero rows parse hue. Selector/bid mismatch ho sakta hai.")
 
     valid_rows_count = 0
     for item in scraped_data_list:
