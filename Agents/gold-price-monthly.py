@@ -144,7 +144,7 @@ try:
     print("Dropdown select ho raha hai...")
     dropdown_element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "select.dropdown")))
     select = Select(dropdown_element)
-    select.select_by_value("oneormorewords")
+    select.select_by_value("With all of the words")
     driver.save_screenshot("step3_dropdown_selected.png")
     
     print("Update Results button par click ho raha hai...")
