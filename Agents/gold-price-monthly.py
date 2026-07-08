@@ -148,12 +148,9 @@ try:
     time.sleep(8)
 
     print("Iframe dhoondh kar switch kiya ja raha hai...")
-    try:
-        iframe_element = wait.until(EC.presence_of_element_located((By.XPATH, "//iframe | //frame")))
-        driver.switch_to.frame(iframe_element)
-        print("Successfully switched inside data iframe.")
-    except Exception as iframe_err:
-        print(f"Iframe context fallback: {iframe_err}")
+    iframe_element = wait.until(EC.presence_of_element_located((By.XPATH, "//iframe | //frame")))
+    driver.switch_to.frame(iframe_element)
+    print("Successfully switched inside data iframe.")
 
     print("Table elements validation loop shuru...")
     table_loaded = False
