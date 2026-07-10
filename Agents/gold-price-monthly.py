@@ -12,9 +12,10 @@ from webdriver_manager.chrome import ChromeDriverManager
 from supabase import create_client, Client
 
 # =====================================================================
-# CONFIGURATION: Target Table & Dataset Specs
+# CONFIGURATION: Target Tables & Dataset Specs
 # =====================================================================
-DESTINATION_TABLE = "automation_test" 
+CHECK_TABLE = "automation_test"   
+DRAFT_TABLE = "data_points_draft"   
 DATASET_ID = 110
 # =====================================================================
 
@@ -217,10 +218,12 @@ try:
             valid_rows_count += 1
             print(f"\nProcessing Monthly Row {valid_rows_count} -> Month: {period_label}, Price: {value}")
             
-            response = supabase.table(DESTINATION_TABLE).select("*").eq("dataset_id", DATASET_ID).eq("period_label", period_label).execute()
+            # Step 1: Pehle check karo ki kya data CHECK_TABLE (data_points) me exist karta hai?
+            response = supabase.table(CHECK_TABLE).select("*").eq("dataset_id", DATASET_ID).eq("period_label", period_label).execute()
             
             if len(response.data) == 0:
-                print(f"Data missing! Table '{DESTINATION_TABLE}' me insert ho raha hai...")
+                # Step 2: Agar CHECK_TABLE me nahi hai, toh entry seedha DRAFT_TABLE (data_points_draft) me jayegi
+                print(f"Data missing in '{CHECK_TABLE}'! Table '{DRAFT_TABLE}' me draft insert ho raha hai...")
                 period_start, period_end = parse_monthly_dates(period_label)
                 
                 data_to_insert = {
@@ -235,26 +238,27 @@ try:
                     "source_note": "via AUTOMATION"
                 }
                 
-                insert_resp = supabase.table(DESTINATION_TABLE).insert(data_to_insert).execute()
-                print(f"SUCCESS: Month {period_label} ka missing data insert ho gaya.")
+                insert_resp = supabase.table(DRAFT_TABLE).insert(data_to_insert).execute()
+                print(f"SUCCESS: Month {period_label} ka naya data '{DRAFT_TABLE}' me chala gaya.")
             else:
+                # Step 3: Agar CHECK_TABLE me data mil gaya, toh value match karke usi table me update karenge
                 existing_record = response.data[0]
                 existing_id = existing_record.get("id")
                 existing_value = float(existing_record.get("value"))
                 
                 if existing_value != value:
-                    print(f"Gadbadi mili! Supabase: {existing_value} vs Extracted: {value}. Correction shuru...")
+                    print(f"Gadbadi mili! Supabase ({CHECK_TABLE}): {existing_value} vs Extracted: {value}. Correction shuru...")
                     correction_note = f"Updated datapoint from {existing_value} to {value}"
                     
-                    query = supabase.table(DESTINATION_TABLE).update({"value": value, "note": correction_note})
+                    query = supabase.table(CHECK_TABLE).update({"value": value, "note": correction_note})
                     if existing_id:
                         update_resp = query.eq("id", existing_id).execute()
                     else:
                         update_resp = query.eq("dataset_id", DATASET_ID).eq("period_label", period_label).execute()
                         
-                    print(f"SUCCESS: Database correction done -> {correction_note}")
+                    print(f"SUCCESS: Table '{CHECK_TABLE}' correction done -> {correction_note}")
                 else:
-                    print(f"Month {period_label} ka data perfectly match ho raha hai.")
+                    print(f"Month {period_label} ka data '{CHECK_TABLE}' me perfectly match ho raha hai.")
                     
         except Exception as row_err:
             print(f"Row operation error: {row_err}")
@@ -268,4 +272,3 @@ finally:
     except Exception:
         pass
     print("Browser closed.")
-    
