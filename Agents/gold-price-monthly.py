@@ -41,8 +41,8 @@ chrome_options.add_argument("--window-size=1366,768")
 chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
 
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
-driver.set_page_load_timeout(50) 
-wait = WebDriverWait(driver, 35)
+driver.set_page_load_timeout(90) 
+wait = WebDriverWait(driver, 60)
 
 def parse_monthly_dates(period_label):
     """
@@ -91,8 +91,8 @@ try:
                 pass
             time.sleep(5)
             driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
-            driver.set_page_load_timeout(50)
-            wait = WebDriverWait(driver, 35)
+            driver.set_page_load_timeout(90)
+            wait = WebDriverWait(driver, 60)
         
     print("Settle hone ke liye explicitly wait kar rahe hain...")
     time.sleep(12) 
@@ -121,19 +121,25 @@ try:
     driver.save_screenshot("step3_dropdown_selected.png")
     
     print("Update Results button par click ho raha hai...")
-    update_btn = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "button.search_button")))
-    driver.execute_script("arguments[0].click();", update_btn)
-    time.sleep(8)  
+    update_btn = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "button.search_button")))
+    try:
+        update_btn.click()
+    except Exception:
+        driver.execute_script("arguments[0].click();", update_btn)
+    time.sleep(15)  
     driver.save_screenshot("step4_results_updated.png")
     
     print("Monthly Link par click ho raha hai...")
-    monthly_link = wait.until(EC.presence_of_element_located((By.XPATH, "//a[contains(text(), 'Monthly Average Price of Gold and Silver')]")))
+    monthly_link = wait.until(EC.element_to_be_clickable((By.XPATH, "//a[contains(text(), 'Monthly Average Price of Gold and Silver')]")))
     
     main_window = driver.current_window_handle
-    driver.execute_script("arguments[0].click();", monthly_link)
+    try:
+        monthly_link.click()
+    except Exception:
+        driver.execute_script("arguments[0].click();", monthly_link)
     
-    print("Link click ho gaya. Tabs check karne ke liye safe hold...")
-    time.sleep(12)
+    print("Link click ho gaya. Naya tab open hone ka dynamic wait...")
+    wait.until(lambda d: len(d.window_handles) > 1)
     driver.save_screenshot("step5_link_clicked.png")
     
     current_handles = driver.window_handles
@@ -148,26 +154,19 @@ try:
     time.sleep(8)
 
     print("Iframe dhoondh kar switch kiya ja raha hai...")
-    try:
-        iframe_element = wait.until(EC.presence_of_element_located((By.XPATH, "//iframe | //frame")))
-        driver.switch_to.frame(iframe_element)
-        print("Successfully switched inside data iframe.")
-    except Exception as iframe_err:
-        print(f"Iframe context fallback: {iframe_err}")
+    iframe_element = wait.until(EC.presence_of_element_located((By.XPATH, "//iframe | //frame")))
+    driver.switch_to.frame(iframe_element)
+    print("Successfully switched inside data iframe.")
 
     print("Table elements validation loop shuru...")
-    table_loaded = False
-    for attempt in range(1, 7): 
-        all_elements = driver.find_elements(By.XPATH, "//*[@bid='4827' or @bid='4826' or @bid='4944']")
-        if len(all_elements) > 0:
-            print(f"SUCCESS: Table load ho gayi, elements mil chuke hain.")
-            table_loaded = True
-            driver.save_screenshot("step6_data_tab_loaded.png")
-            break
-        else:
-            driver.save_screenshot(f"step6_attempt_{attempt}.png")
-            time.sleep(5)
-            
+    try:
+        all_elements = wait.until(EC.presence_of_all_elements_located((By.XPATH, "//*[@bid='4827' or @bid='4826' or @bid='4944']")))
+        print(f"SUCCESS: Table load ho gayi, elements mil chuke hain.")
+        table_loaded = True
+        driver.save_screenshot("step6_data_tab_loaded.png")
+    except Exception:
+        table_loaded = False
+        
     if not table_loaded:
         driver.save_screenshot("step6_data_tab_loaded.png")
         raise Exception("CRITICAL: Table load nahi ho saki.")
@@ -201,7 +200,6 @@ try:
                     target_year = fy_end if raw_month.upper() in ["JAN", "FEB", "MAR"] else fy_start
                     full_period_label = f"{raw_month} {target_year}"
                     
-                    # Floats ke decimal issues bachane ke liye round off to 2 decimal places kiya hai
                     val = int(round(float(raw_val.replace(',', '').strip())))
                     scraped_data_list.append({"period_label": full_period_label, "value": val})
         except Exception:
