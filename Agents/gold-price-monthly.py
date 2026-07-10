@@ -232,7 +232,7 @@ try:
                     "value": value,
                     "note": "NEW",
                     "is_active": False,  
-                    "created_by": "AUTOMATION"
+                    "source_note": "via AUTOMATION"
                 }
                 
                 insert_resp = supabase.table(DESTINATION_TABLE).insert(data_to_insert).execute()
@@ -268,3 +268,4 @@ finally:
     except Exception:
         pass
     print("Browser closed.")
+    
