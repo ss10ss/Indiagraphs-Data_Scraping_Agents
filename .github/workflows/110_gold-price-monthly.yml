@@ -1,4 +1,4 @@
-name: 110_gold-price-monthly-scraper
+name: 110_gold-price-monthly
 
 on:
   schedule:
