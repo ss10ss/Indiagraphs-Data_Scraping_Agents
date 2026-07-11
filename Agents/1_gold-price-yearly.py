@@ -150,14 +150,13 @@ try:
     all_rows = driver.find_elements(By.XPATH, "//tr[./td[@bid='76']]")
     
     scraped_data_list = []
-    # CHANGED: Top 3 entries logic applied like monthly scripts
     for row in all_rows[:3]:
         try:
-            p_label = row.find_element(By.XPATH, "./td[@bid='76']//span").get_attribute("textContent").strip()
+            # FIXED: En-dash (–) ko standard hyphen (-) se replace kiya aur clean split kiya
+            p_label = row.find_element(By.XPATH, "./td[@bid='76']//span").get_attribute("textContent").replace("–", "-").strip()
             g_raw = row.find_element(By.XPATH, "./td[@bid='72']//span").get_attribute("textContent").strip()
             
             if p_label and g_raw and g_raw != "":
-                # CHANGED: Integer conversion to follow monthly standards
                 val = int(round(float(g_raw.replace(',', '').strip())))
                 scraped_data_list.append({"period_label": p_label, "value": val})
         except Exception as e:
@@ -175,10 +174,23 @@ try:
             valid_rows_count += 1
             print(f"\nProcessing Yearly Row {valid_rows_count} -> Year: {period_label}, Price: {value}")
             
-            # Step 1: CHECK_TABLE (data_points) check logic
+            # Step 1: CHECK_TABLE (data_points) me direct check query chalayenge
             response = supabase.table(CHECK_TABLE).select("*").eq("dataset_id", DATASET_ID).eq("period_label", period_label).execute()
             
+            matched_record = None
             if len(response.data) == 0:
+                # FIXED: Character encoding variations ke liye safe fallback mechanism lagaya
+                print(f"Direct match nahi mila '{period_label}' ka. Safe fetch try kar rahe hain...")
+                all_db_records = supabase.table(CHECK_TABLE).select("*").eq("dataset_id", DATASET_ID).execute()
+                for rec in all_db_records.data:
+                    db_label = rec.get("period_label", "").replace("–", "-").strip()
+                    if db_label == period_label:
+                        matched_record = rec
+                        break
+            else:
+                matched_record = response.data[0]
+
+            if not matched_record:
                 # Step 2: Missing data ko DRAFT_TABLE me insert karna
                 print(f"Data missing in '{CHECK_TABLE}'! Table '{DRAFT_TABLE}' me draft insert ho raha hai...")
                 period_start, period_end = parse_fy_dates(period_label)
@@ -199,9 +211,11 @@ try:
                 print(f"SUCCESS: Year {period_label} ka naya data '{DRAFT_TABLE}' me chala gaya.")
             else:
                 # Step 3: Check table me value correction check logic
-                existing_record = response.data[0]
-                existing_id = existing_record.get("id")
-                existing_value = float(existing_record.get("value"))
+                existing_id = matched_record.get("id")
+                existing_value_raw = matched_record.get("value")
+                
+                # FIXED: Database ki numerical/float value ko int me cast kiya precision safe-match ke liye
+                existing_value = int(round(float(str(existing_value_raw).replace(',', '').strip()))) if existing_value_raw else 0
                 
                 if existing_value != value:
                     print(f"Gadbadi mili! Supabase ({CHECK_TABLE}): {existing_value} vs Extracted: {value}. Correction shuru...")
