@@ -75,7 +75,6 @@ try:
             driver.set_page_load_timeout(60)
             wait = WebDriverWait(driver, 45)
         
-    # DOM state ready hone ka pure wait
     wait.until(lambda d: d.execute_script("return document.readyState") == "complete")
     driver.save_screenshot("step1_initial_page.png")
     
@@ -100,10 +99,8 @@ try:
     update_btn = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "button.search_button")))
     driver.execute_script("arguments[0].click();", update_btn)
     
-    # DYNAMIC WAIT 1: RBI portal ke dynamic spinner/loader ke khatam hone ka wait
     print("Results reload hone ka wait kar rahe hain (Waiting for spinner to disappear)...")
     try:
-        # Agar spinner turant dikhta hai to uske gayab hone ka wait karega
         wait.until(EC.invisibility_of_element_located((By.CLASS_NAME, "loading-spinner"))) 
     except Exception:
         pass
@@ -118,7 +115,6 @@ try:
     main_window = driver.current_window_handle
     driver.execute_script("arguments[0].click();", first_link)
     
-    # DYNAMIC WAIT 2: Naya tab open hone ka explicit wait (Jab tak windows handle 2 na ho jaye)
     print("Naye tab ke open hone ka wait ho raha hai...")
     wait.until(EC.number_of_windows_to_be(2))
     
@@ -129,7 +125,6 @@ try:
             print("Naye tab par switch successfully ho gaye.")
             break
             
-    # DYNAMIC WAIT 3: Naye tab ka DOM ready hone ka wait
     print("Naye tab ke poora load hone ka wait ho raha hai...")
     wait.until(lambda d: d.execute_script("return document.readyState") == "complete")
     driver.save_screenshot("step5_link_clicked.png")
@@ -138,7 +133,6 @@ try:
     iframe_element = wait.until(EC.presence_of_element_located((By.XPATH, "//iframe | //frame")))
     driver.switch_to.frame(iframe_element)
 
-    # DYNAMIC WAIT 4: Table ke rows load hone ka wait (Maximum 45 seconds)
     print("Table rows load hone ka wait chal raha hai...")
     wait.until(EC.presence_of_element_located((By.XPATH, "//td[@bid='76' or @bid='72']/ancestor::tr")))
     driver.save_screenshot("step6_data_tab_loaded.png")
@@ -153,7 +147,8 @@ try:
             g_raw = row.find_element(By.XPATH, "./td[@bid='72']//span").get_attribute("textContent").strip()
             
             if p_label and g_raw and g_raw != "":
-                val = int(round(float(g_raw.replace(',', '').strip())))
+                # FIXED: int hata kar pure float rakha decimal points ke liye
+                val = float(g_raw.replace(',', '').strip())
                 scraped_data_list.append({"period_label": p_label, "value": val})
         except Exception as e:
             print(f"Raw parse error: {e}")
@@ -170,7 +165,6 @@ try:
             valid_rows_count += 1
             print(f"\nProcessing Yearly Row {valid_rows_count} -> Year: {period_label}, Price: {value}")
             
-            # Step 1: CHECK_TABLE (data_points) check logic
             response = supabase.table(CHECK_TABLE).select("*").eq("dataset_id", DATASET_ID).eq("period_label", period_label).execute()
             
             matched_record = None
@@ -186,7 +180,6 @@ try:
                 matched_record = response.data[0]
 
             if not matched_record:
-                # Step 2: Missing data ko DRAFT_TABLE me insert karna
                 print(f"Data missing in '{CHECK_TABLE}'! Table '{DRAFT_TABLE}' me draft insert ho raha hai...")
                 period_start, period_end = parse_fy_dates(period_label)
                 
@@ -205,11 +198,11 @@ try:
                 insert_resp = supabase.table(DRAFT_TABLE).insert(data_to_insert).execute()
                 print(f"SUCCESS: Year {period_label} ka naya data '{DRAFT_TABLE}' me chala gaya.")
             else:
-                # Step 3: Check table me value correction check logic
                 existing_id = matched_record.get("id")
                 existing_value_raw = matched_record.get("value")
                 
-                existing_value = int(round(float(str(existing_value_raw).replace(',', '').strip()))) if existing_value_raw else 0
+                # FIXED: Database ki numerical value ko bhi pure float me cast kiya (no integer truncation)
+                existing_value = float(str(existing_value_raw).replace(',', '').strip()) if existing_value_raw else 0.0
                 
                 if existing_value != value:
                     print(f"Gadbadi mili! Supabase ({CHECK_TABLE}): {existing_value} vs Extracted: {value}. Correction shuru...")
