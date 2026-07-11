@@ -31,7 +31,7 @@ jobs:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: |
           cd Agents
-          python silver-price-monthly.py
+          python 111_silver-price-monthly.py
 
       - name: Upload Debug Screenshots
         if: always()
