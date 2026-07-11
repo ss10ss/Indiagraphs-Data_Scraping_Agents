@@ -148,8 +148,8 @@ try:
             s_raw = row.find_element(By.XPATH, "./td[@bid='72' and @c='5']//span").get_attribute("textContent").strip()
             
             if p_label and s_raw and s_raw != "":
-                # FIXED: Extracted value ko hamesha rounded integer me convert kiya
-                val = int(round(float(s_raw.replace(',', '').strip())))
+                # FIXED: Round off hatakar exact decimal value ko float me fetch kiya
+                val = float(s_raw.replace(',', '').strip())
                 scraped_data_list.append({"period_label": p_label, "value": val})
         except Exception as e:
             print(f"Raw parse error: {e}")
@@ -161,10 +161,10 @@ try:
     for item in scraped_data_list:
         try:
             period_label = item["period_label"]
-            value = item["value"] # Yeh ab clean integer hai
+            value = item["value"] # Ab yeh exact decimal value (float) hai
             
             valid_rows_count += 1
-            print(f"\nProcessing Yearly Row {valid_rows_count} -> Year: {period_label}, Target Rounded Price: {value}")
+            print(f"\nProcessing Yearly Row {valid_rows_count} -> Year: {period_label}, Target Price: {value}")
             
             response = supabase.table(CHECK_TABLE).select("*").eq("dataset_id", DATASET_ID).eq("period_label", period_label).execute()
             
@@ -190,7 +190,7 @@ try:
                     "period_label": period_label,
                     "period_start": period_start,
                     "period_end": period_end,
-                    "value": value, # Pure integer insert hoga
+                    "value": value, # Exact float value bina rounding ke insert hogi
                     "note": "NEW",
                     "is_active": False,
                     "source_note": "via AUTOMATION"
@@ -202,13 +202,13 @@ try:
                 existing_id = matched_record.get("id")
                 existing_value_raw = matched_record.get("value")
                 
-                # DB ki raw float value ko fetch kiya bina truncate kiye
+                # DB ki value ko float me cast kiya bina precision loose kiye
                 existing_value = float(str(existing_value_raw).strip()) if existing_value_raw is not None else 0.0
                 
-                # FIXED: DB ki actual value agar hamare targeted rounded integer ke exactly barabar nahi hai, toh update trigger hoga.
-                if existing_value != float(value):
-                    print(f"Gadbadi mili! Supabase ({CHECK_TABLE}): {existing_value} vs Targeted Rounded: {value}. Correction shuru...")
-                    correction_note = f"Updated datapoint to clean rounded integer {value}"
+                # FIXED: Ab exact decimal precision ke basis par check hoga
+                if existing_value != value:
+                    print(f"Gadbadi mili! Supabase ({CHECK_TABLE}): {existing_value} vs Targeted: {value}. Correction shuru...")
+                    correction_note = f"Updated datapoint to exact value {value}"
                     
                     query = supabase.table(CHECK_TABLE).update({"value": value, "note": correction_note})
                     if existing_id:
