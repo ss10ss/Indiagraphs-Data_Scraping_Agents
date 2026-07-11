@@ -137,17 +137,18 @@ try:
     wait.until(EC.presence_of_element_located((By.XPATH, "//td[@bid='76' or @bid='72']/ancestor::tr")))
     driver.save_screenshot("step6_data_tab_loaded.png")
     
-    print("Silver data extract ho raha hai...")
+    print("Aapke HTML structure ke mutabik data extract ho raha hai...")
     all_rows = driver.find_elements(By.XPATH, "//tr[./td[@bid='76']]")
     
     scraped_data_list = []
     for row in all_rows[:3]:
         try:
             p_label = row.find_element(By.XPATH, "./td[@bid='76']//span").get_attribute("textContent").replace("–", "-").strip()
-            # TARGET MATCHED: bid='72' aur c='5' se pure Mumbai Silver cell hit hoga
+            # TARGETED MATCHED: bid='72' aur c='5' attribute logic se exact Mumbai Silver Column cell select ho raha hai
             s_raw = row.find_element(By.XPATH, "./td[@bid='72' and @c='5']//span").get_attribute("textContent").strip()
             
             if p_label and s_raw and s_raw != "":
+                # FIXED: Extracted value ko hamesha rounded integer me convert kiya
                 val = int(round(float(s_raw.replace(',', '').strip())))
                 scraped_data_list.append({"period_label": p_label, "value": val})
         except Exception as e:
@@ -160,10 +161,10 @@ try:
     for item in scraped_data_list:
         try:
             period_label = item["period_label"]
-            value = item["value"]
+            value = item["value"] # Yeh ab clean integer hai
             
             valid_rows_count += 1
-            print(f"\nProcessing Yearly Row {valid_rows_count} -> Year: {period_label}, Target Rounded Silver Price: {value}")
+            print(f"\nProcessing Yearly Row {valid_rows_count} -> Year: {period_label}, Target Rounded Price: {value}")
             
             response = supabase.table(CHECK_TABLE).select("*").eq("dataset_id", DATASET_ID).eq("period_label", period_label).execute()
             
@@ -189,20 +190,22 @@ try:
                     "period_label": period_label,
                     "period_start": period_start,
                     "period_end": period_end,
-                    "value": value,
+                    "value": value, # Pure integer insert hoga
                     "note": "NEW",
                     "is_active": False,
                     "source_note": "via AUTOMATION"
                 }
                 
                 insert_resp = supabase.table(DRAFT_TABLE).insert(data_to_insert).execute()
-                print(f"SUCCESS: Year {period_label} ka naya Silver data '{DRAFT_TABLE}' me chala gaya.")
+                print(f"SUCCESS: Year {period_label} ka naya data '{DRAFT_TABLE}' me chala gaya.")
             else:
                 existing_id = matched_record.get("id")
                 existing_value_raw = matched_record.get("value")
                 
+                # DB ki raw float value ko fetch kiya bina truncate kiye
                 existing_value = float(str(existing_value_raw).strip()) if existing_value_raw is not None else 0.0
                 
+                # FIXED: DB ki actual value agar hamare targeted rounded integer ke exactly barabar nahi hai, toh update trigger hoga.
                 if existing_value != float(value):
                     print(f"Gadbadi mili! Supabase ({CHECK_TABLE}): {existing_value} vs Targeted Rounded: {value}. Correction shuru...")
                     correction_note = f"Updated datapoint to clean rounded integer {value}"
