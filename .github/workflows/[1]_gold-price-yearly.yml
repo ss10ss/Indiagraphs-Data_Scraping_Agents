@@ -31,7 +31,7 @@ jobs:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: |
           cd Agents
-          python "[1]_gold-price-yearly.py"
+          python "1_Gold-Price-Yearly-Scraper.py"
 
       - name: Upload Debug Screenshots
         if: always()
