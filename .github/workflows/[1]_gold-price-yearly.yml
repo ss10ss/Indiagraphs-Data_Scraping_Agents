@@ -1,4 +1,4 @@
-name: "[1] Gold Price Yearly Scraper"
+name: 1_Gold-Price-Yearly-Scraper
 
 on:
   schedule:
