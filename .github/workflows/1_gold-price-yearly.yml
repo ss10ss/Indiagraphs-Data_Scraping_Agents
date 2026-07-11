@@ -1,4 +1,4 @@
-name: 1_gold-price-yearly-scraper
+name: 1_gold-price-yearly
 
 on:
   schedule:
@@ -31,7 +31,7 @@ jobs:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: |
           cd Agents
-          python "1_gold-price-yearly-scraper.py"
+          python "1_gold-price-yearly.py"
 
       - name: Upload Debug Screenshots
         if: always()
