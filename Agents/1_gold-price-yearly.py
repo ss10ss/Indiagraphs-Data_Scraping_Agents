@@ -41,8 +41,8 @@ chrome_options.add_argument("--window-size=1366,768")
 chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
 
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
-driver.set_page_load_timeout(50) 
-wait = WebDriverWait(driver, 35)
+driver.set_page_load_timeout(60) 
+wait = WebDriverWait(driver, 45)
 
 def parse_fy_dates(period_label):
     try:
@@ -71,80 +71,77 @@ try:
                 driver.quit()
             except Exception:
                 pass
-            time.sleep(5)
             driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
-            driver.set_page_load_timeout(50)
-            wait = WebDriverWait(driver, 35)
+            driver.set_page_load_timeout(60)
+            wait = WebDriverWait(driver, 45)
         
-    print("Settle hone ke liye explicitly wait kar rahe hain...")
-    time.sleep(12) 
+    # DOM state ready hone ka pure wait
+    wait.until(lambda d: d.execute_script("return document.readyState") == "complete")
     driver.save_screenshot("step1_initial_page.png")
     
     try:
         alert = driver.switch_to.alert
         alert.dismiss()
-        time.sleep(3)
     except Exception:
         pass
 
     print("Search box me text enter ho raha hai...")
-    search_box = wait.until(EC.presence_of_element_located((By.XPATH, "//input[@type='search' or @placeholder='Search']")))
+    search_box = wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@type='search' or @placeholder='Search']")))
     driver.execute_script("arguments[0].click();", search_box)
     driver.execute_script("arguments[0].value = '';", search_box)
     search_box.send_keys("gold average")
-    time.sleep(3)  
-    driver.save_screenshot("step2_search_text_entered.png")
     
     print("Dropdown select ho raha hai...")
     dropdown_element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "select.dropdown")))
     select = Select(dropdown_element)
     select.select_by_value("oneormorewords")
-    time.sleep(3)  
-    driver.save_screenshot("step3_dropdown_selected.png")
     
     print("Update Results button par click ho raha hai...")
-    update_btn = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "button.search_button")))
+    update_btn = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "button.search_button")))
     driver.execute_script("arguments[0].click();", update_btn)
-    time.sleep(8)  
+    
+    # DYNAMIC WAIT 1: RBI portal ke dynamic spinner/loader ke khatam hone ka wait
+    print("Results reload hone ka wait kar rahe hain (Waiting for spinner to disappear)...")
+    try:
+        # Agar spinner turant dikhta hai to uske gayab hone ka wait karega
+        wait.until(EC.invisibility_of_element_located((By.CLASS_NAME, "loading-spinner"))) 
+    except Exception:
+        pass
+        
+    wait.until(lambda d: d.execute_script("return document.readyState") == "complete")
     driver.save_screenshot("step4_results_updated.png")
     
     print("First link par click ho raha hai...")
-    first_link = wait.until(EC.presence_of_element_located((By.XPATH, "//a[contains(text(), 'Gold and Silver - Yearly Average Price')]")))
+    link_xpath = "//a[contains(text(), 'Gold and Silver - Yearly Average Price')]"
+    first_link = wait.until(EC.element_to_be_clickable((By.XPATH, link_xpath)))
+    
     main_window = driver.current_window_handle
     driver.execute_script("arguments[0].click();", first_link)
-    time.sleep(12)
-    driver.save_screenshot("step5_link_clicked.png")
+    
+    # DYNAMIC WAIT 2: Naya tab open hone ka explicit wait (Jab tak windows handle 2 na ho jaye)
+    print("Naye tab ke open hone ka wait ho raha hai...")
+    wait.until(EC.number_of_windows_to_be(2))
     
     current_handles = driver.window_handles
-    if len(current_handles) > 1:
-        for handle in current_handles:
-            if handle != main_window:
-                driver.switch_to.window(handle)
-                print("Naye tab par switch successfully ho gaye.")
-                break
+    for handle in current_handles:
+        if handle != main_window:
+            driver.switch_to.window(handle)
+            print("Naye tab par switch successfully ho gaye.")
+            break
             
-    time.sleep(8)
+    # DYNAMIC WAIT 3: Naye tab ka DOM ready hone ka wait
+    print("Naye tab ke poora load hone ka wait ho raha hai...")
+    wait.until(lambda d: d.execute_script("return document.readyState") == "complete")
+    driver.save_screenshot("step5_link_clicked.png")
 
     print("Iframe dhoondh kar switch kiya ja raha hai...")
-    try:
-        iframe_element = wait.until(EC.presence_of_element_located((By.XPATH, "//iframe | //frame")))
-        driver.switch_to.frame(iframe_element)
-    except Exception as iframe_err:
-        print(f"Iframe switch backup use karega: {iframe_err}")
+    iframe_element = wait.until(EC.presence_of_element_located((By.XPATH, "//iframe | //frame")))
+    driver.switch_to.frame(iframe_element)
 
-    table_loaded = False
-    for attempt in range(1, 7): 
-        all_rows = driver.find_elements(By.XPATH, "//td[@bid='76' or @bid='72']/ancestor::tr")
-        if len(all_rows) > 0:
-            table_loaded = True
-            driver.save_screenshot("step6_data_tab_loaded.png")
-            break
-        else:
-            time.sleep(5)
-            
-    if not table_loaded:
-        driver.save_screenshot("step6_data_tab_loaded.png")
-        raise Exception("CRITICAL: Table load nahi ho saki.")
+    # DYNAMIC WAIT 4: Table ke rows load hone ka wait (Maximum 45 seconds)
+    print("Table rows load hone ka wait chal raha hai...")
+    wait.until(EC.presence_of_element_located((By.XPATH, "//td[@bid='76' or @bid='72']/ancestor::tr")))
+    driver.save_screenshot("step6_data_tab_loaded.png")
     
     print("Aapke HTML structure ke mutabik data extract ho raha hai...")
     all_rows = driver.find_elements(By.XPATH, "//tr[./td[@bid='76']]")
@@ -152,7 +149,6 @@ try:
     scraped_data_list = []
     for row in all_rows[:3]:
         try:
-            # FIXED: En-dash (–) ko standard hyphen (-) se replace kiya aur clean split kiya
             p_label = row.find_element(By.XPATH, "./td[@bid='76']//span").get_attribute("textContent").replace("–", "-").strip()
             g_raw = row.find_element(By.XPATH, "./td[@bid='72']//span").get_attribute("textContent").strip()
             
@@ -174,12 +170,11 @@ try:
             valid_rows_count += 1
             print(f"\nProcessing Yearly Row {valid_rows_count} -> Year: {period_label}, Price: {value}")
             
-            # Step 1: CHECK_TABLE (data_points) me direct check query chalayenge
+            # Step 1: CHECK_TABLE (data_points) check logic
             response = supabase.table(CHECK_TABLE).select("*").eq("dataset_id", DATASET_ID).eq("period_label", period_label).execute()
             
             matched_record = None
             if len(response.data) == 0:
-                # FIXED: Character encoding variations ke liye safe fallback mechanism lagaya
                 print(f"Direct match nahi mila '{period_label}' ka. Safe fetch try kar rahe hain...")
                 all_db_records = supabase.table(CHECK_TABLE).select("*").eq("dataset_id", DATASET_ID).execute()
                 for rec in all_db_records.data:
@@ -214,7 +209,6 @@ try:
                 existing_id = matched_record.get("id")
                 existing_value_raw = matched_record.get("value")
                 
-                # FIXED: Database ki numerical/float value ko int me cast kiya precision safe-match ke liye
                 existing_value = int(round(float(str(existing_value_raw).replace(',', '').strip()))) if existing_value_raw else 0
                 
                 if existing_value != value:
