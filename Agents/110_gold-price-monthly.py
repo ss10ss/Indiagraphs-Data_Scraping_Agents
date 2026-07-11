@@ -206,7 +206,7 @@ try:
         except Exception:
             continue
 
-    scraped_data_list = scraped_data_list[:3]
+    scraped_data_list = scraped_data_list[:5]
     scraped_data_list.reverse()
 
     valid_rows_count = 0
