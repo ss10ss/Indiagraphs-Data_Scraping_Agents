@@ -13,8 +13,8 @@ from supabase import create_client, Client
 # =====================================================================
 # CONFIGURATION: Target Tables & Dataset Specs
 # =====================================================================
-CHECK_TABLE = "automation_test"   
-DRAFT_TABLE = "automation_test"   
+CHECK_TABLE = "data_points"   
+DRAFT_TABLE = "data_points_draft"   
 DATASET_ID = 1
 # =====================================================================
 
