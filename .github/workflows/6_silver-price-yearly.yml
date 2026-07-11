@@ -1,9 +1,9 @@
 name: 6_silver-price-yearly
 
 on:
-  workflow_dispatch:
   schedule:
-    - cron: '0 0 15 * *' # Runs every Monday at 05:00 UTC
+    - cron: '0 0 15 * *'
+  workflow_dispatch:
 
 jobs:
   run-scraper:
