@@ -2,7 +2,7 @@ name: Gold Price Yearly Scraper
 
 on:
   schedule:
-    - cron: '0 0 1 4 *'   # Yearly execution cycle (1st April)
+    - cron: '0 0 15 * *'   # Yearly execution cycle (1st April)
   workflow_dispatch:
 
 jobs:
