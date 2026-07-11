@@ -1,4 +1,4 @@
-name: Silver Price Monthly Scraper
+name: 111_silver-price-monthly-scraper
 
 on:
   schedule:
