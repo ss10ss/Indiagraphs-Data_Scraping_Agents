@@ -15,8 +15,8 @@ import os
 # =====================================================================
 # CONFIGURATION: Target Tables & Dataset Specs
 # =====================================================================
-CHECK_TABLE = "automation_test"   
-DRAFT_TABLE = "automation_test"   
+CHECK_TABLE = "data_points"   
+DRAFT_TABLE = "data_points_draft"   
 DATASET_ID = 112
 # =====================================================================
 
@@ -46,9 +46,6 @@ driver.set_page_load_timeout(90)
 wait = WebDriverWait(driver, 60)
 
 def parse_monthly_dates(period_label):
-    """
-    Format handle karta hai: 'Jun-2026' ya 'Jun 2026' -> (2026-06-01, 2026-06-30)
-    """
     try:
         clean_label = period_label.replace('-', ' ').strip()
         parts = clean_label.split()
@@ -80,11 +77,9 @@ try:
     print("Page open ho raha hai...")
     for attempt in range(1, 4):
         try:
-            print(f"URL load attempt {attempt}/3...")
             driver.get("https://data.rbi.org.in/DBIE/#/dbie/searchresult")
             break
         except Exception as e:
-            print(f"Attempt {attempt} me error aaya: {e}")
             if attempt == 3:
                 raise e
             try:
@@ -96,7 +91,6 @@ try:
             driver.set_page_load_timeout(90)
             wait = WebDriverWait(driver, 60)
         
-    print("Settle hone ke liye explicitly wait kar rahe hain...")
     time.sleep(12) 
     driver.save_screenshot("step1_initial_page.png")
     
@@ -128,7 +122,7 @@ try:
         update_btn.click()
     except Exception:
         driver.execute_script("arguments[0].click();", update_btn)
-    time.sleep(15)  
+    
     driver.save_screenshot("step4_results_updated.png")
     
     print("Exchange Rate Monthly Link par click ho raha hai...")
@@ -140,7 +134,6 @@ try:
     except Exception:
         driver.execute_script("arguments[0].click();", monthly_link)
     
-    print("Link click ho gaya. Naya tab open hone ka dynamic wait...")
     wait.until(lambda d: len(d.window_handles) > 1)
     driver.save_screenshot("step5_link_clicked.png")
     
@@ -149,21 +142,17 @@ try:
         for handle in current_handles:
             if handle != main_window:
                 driver.switch_to.window(handle)
-                print("Naye tab par switch successfully ho gaye.")
                 break
             
-    print("Loading spinner ke khatam hone ka explicit wait...")
     time.sleep(10)
 
     print("Iframe dhoondh kar switch kiya ja raha hai...")
     iframe_element = wait.until(EC.presence_of_element_located((By.XPATH, "//iframe | //frame")))
     driver.switch_to.frame(iframe_element)
-    print("Successfully switched inside data iframe.")
 
     print("Table elements validation loop shuru...")
     try:
         all_elements = wait.until(EC.presence_of_all_elements_located((By.XPATH, "//*[@bid='790' or @bid='791']")))
-        print(f"SUCCESS: Table load ho gayi, elements mil chuke hain.")
         table_loaded = True
         driver.save_screenshot("step6_data_tab_loaded.png")
     except Exception:
@@ -249,11 +238,10 @@ try:
             print(f"Row operation error: {row_err}")
             continue
 
-    print(f"\nScraping complete! Total {valid_rows_count} monthly rows process ki gayi hain.")
+    print(f"\nScraping complete!")
 
 finally:
     try:
         driver.quit()
     except Exception:
         pass
-    print("Browser closed.")
