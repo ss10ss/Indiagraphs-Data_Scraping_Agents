@@ -47,8 +47,7 @@ wait = WebDriverWait(driver, 60)
 
 def parse_monthly_dates(period_label):
     try:
-        clean_label = period_label.replace('-', ' ').strip()
-        parts = clean_label.split()
+        parts = period_label.strip().split()
         if len(parts) != 2:
             return None, None
         
@@ -77,9 +76,11 @@ try:
     print("Page open ho raha hai...")
     for attempt in range(1, 4):
         try:
+            print(f"URL load attempt {attempt}/3...")
             driver.get("https://data.rbi.org.in/DBIE/#/dbie/searchresult")
             break
         except Exception as e:
+            print(f"Attempt {attempt} me error aaya: {e}")
             if attempt == 3:
                 raise e
             try:
@@ -91,6 +92,7 @@ try:
             driver.set_page_load_timeout(90)
             wait = WebDriverWait(driver, 60)
         
+    print("Settle hone ke liye explicitly wait kar rahe hain...")
     time.sleep(12) 
     driver.save_screenshot("step1_initial_page.png")
     
@@ -106,14 +108,15 @@ try:
     driver.execute_script("arguments[0].click();", search_box)
     driver.execute_script("arguments[0].value = '';", search_box)
     search_box.send_keys("usd to inr")
-    time.sleep(3)  
+    time.sleep(2)  
     driver.save_screenshot("step2_search_text_entered.png")
     
+    # GOLD SCRIPT PATTERN - Dropdown Implementation
     print("Dropdown select ho raha hai: With all of the words...")
-    dropdown_element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "select.dropdown")))
-    select = Select(dropdown_element)
-    select.select_by_value("allwords")
-    time.sleep(3)  
+    dropdown_element = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "select.dropdown_search")))
+    select_filter = Select(dropdown_element)
+    select_filter.select_by_value("allwords")
+    time.sleep(2)
     driver.save_screenshot("step3_dropdown_selected.png")
     
     print("Update Results button par click ho raha hai...")
@@ -123,9 +126,10 @@ try:
     except Exception:
         driver.execute_script("arguments[0].click();", update_btn)
     
+    print("Link load hone ka natural flow wait...")
     driver.save_screenshot("step4_results_updated.png")
     
-    print("Exchange Rate Monthly Link par click ho raha hai...")
+    print("USD to INR Monthly Average Rate Link par click ho raha hai...")
     monthly_link = wait.until(EC.element_to_be_clickable((By.XPATH, "//a[contains(text(), 'Exchange Rate of the Indian Rupee vis-a-vis the SDR, US Dollar, Pound Sterling (Monthly Average and End-Month Rates)')]")))
     
     main_window = driver.current_window_handle
@@ -134,6 +138,7 @@ try:
     except Exception:
         driver.execute_script("arguments[0].click();", monthly_link)
     
+    print("Link click ho gaya. Naya tab open hone ka dynamic wait...")
     wait.until(lambda d: len(d.window_handles) > 1)
     driver.save_screenshot("step5_link_clicked.png")
     
@@ -142,17 +147,21 @@ try:
         for handle in current_handles:
             if handle != main_window:
                 driver.switch_to.window(handle)
+                print("Naye tab par switch successfully ho gaye.")
                 break
             
-    time.sleep(10)
+    print("Loading spinner ke khatam hone ka explicit wait...")
+    time.sleep(8)
 
     print("Iframe dhoondh kar switch kiya ja raha hai...")
     iframe_element = wait.until(EC.presence_of_element_located((By.XPATH, "//iframe | //frame")))
     driver.switch_to.frame(iframe_element)
+    print("Successfully switched inside data iframe.")
 
     print("Table elements validation loop shuru...")
     try:
         all_elements = wait.until(EC.presence_of_all_elements_located((By.XPATH, "//*[@bid='790' or @bid='791']")))
+        print(f"SUCCESS: Table load ho gayi, elements mil chuke hain.")
         table_loaded = True
         driver.save_screenshot("step6_data_tab_loaded.png")
     except Exception:
@@ -177,9 +186,9 @@ try:
                 raw_val = val_elements[0].get_attribute("textContent").strip()
                 
                 if raw_month and raw_val:
-                    display_period = raw_month.replace('-', ' ').strip()
+                    full_period_label = raw_month.replace('-', ' ').strip().title()
                     val = float(raw_val.replace(',', '').strip())
-                    scraped_data_list.append({"period_label": display_period, "value": val})
+                    scraped_data_list.append({"period_label": full_period_label, "value": val})
         except Exception:
             continue
 
@@ -238,10 +247,11 @@ try:
             print(f"Row operation error: {row_err}")
             continue
 
-    print(f"\nScraping complete!")
+    print(f"\nScraping complete! Total {valid_rows_count} monthly rows process ki gayi hain.")
 
 finally:
     try:
         driver.quit()
     except Exception:
         pass
+    print("Browser closed.")
