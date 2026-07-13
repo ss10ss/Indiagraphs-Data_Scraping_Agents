@@ -1,4 +1,4 @@
-name: 112_usd-inr-monthly
+name: usd-inr-monthly
 
 on:
   schedule:
@@ -21,28 +21,23 @@ jobs:
       - name: Setup Google Chrome Stable
         run: |
           sudo apt-get update
-          sudo apt-get install -y wget curl unzip
-          wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
-          sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list'
-          sudo apt-get update
           sudo apt-get install -y google-chrome-stable
 
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install selenium webdriver-manager supabase datetime
+          pip install selenium webdriver-manager supabase
 
       - name: Execute Automation Script
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: |
-          python src/112_usd-inr-monthly.py
+          python Agents/112_usd-inr-monthly.py
 
       - name: Upload Debug Artifacts on Failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: selenium-debug-screenshots
-          path: '*.png'
-          if-no-files-found: ignore
+          path: Agents/*.png
