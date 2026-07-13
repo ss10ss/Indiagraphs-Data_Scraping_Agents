@@ -15,8 +15,8 @@ import os
 # =====================================================================
 # CONFIGURATION: Target Tables & Dataset Specs
 # =====================================================================
-CHECK_TABLE = "data_points"   
-DRAFT_TABLE = "data_points_draft"   
+CHECK_TABLE = "automation_test"   
+DRAFT_TABLE = "automation_test"   
 DATASET_ID = 112
 # =====================================================================
 
