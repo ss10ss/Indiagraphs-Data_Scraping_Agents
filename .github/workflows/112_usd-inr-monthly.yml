@@ -2,11 +2,11 @@ name: 112_usd-inr-monthly
 
 on:
   schedule:
-    - cron: '0 0 15 * *' # Executes on the 15th of every month
+    - cron: '0 0 15 * *'
   workflow_dispatch:
 
 jobs:
-  scrape-and-sync:
+  usd-inr-monthly:
     runs-on: ubuntu-latest
 
     steps:
@@ -37,7 +37,7 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: |
-          python 112_usd-inr-monthly.py
+          python src/112_usd-inr-monthly.py
 
       - name: Upload Debug Artifacts on Failure
         if: failure()
