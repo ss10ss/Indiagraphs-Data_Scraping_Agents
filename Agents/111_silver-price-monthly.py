@@ -246,9 +246,8 @@ try:
                 "period_start": period_start,
                 "period_end": period_end,
                 "value": value,
-                "note": "NEW",
-                "is_active": False,  
-                "source_note": "via AUTOMATION"
+                "is_active": False,
+                "created_by": "c7dcaab6-1312-4d08-8b39-d327827d885f"
             }
             
             insert_resp = supabase.table(DRAFT_TABLE).insert(data_to_insert).execute()
