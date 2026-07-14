@@ -219,47 +219,40 @@ try:
             valid_rows_count += 1
             print(f"\nProcessing Monthly Row {valid_rows_count} -> Month: {period_label}, Price: {value}")
             
-            # Step 1: Pehle check karo ki kya data CHECK_TABLE (data_points) me exist karta hai?
-            response = supabase.table(CHECK_TABLE).select("*").eq("dataset_id", DATASET_ID).eq("period_label", period_label).execute()
+            # Step 1: Check karo ki ye period_label CHECK_TABLE (data_points) me exist karta hai?
+            check_response = supabase.table(CHECK_TABLE).select("period_label").eq("dataset_id", DATASET_ID).eq("period_label", period_label).execute()
+            exists_in_check = len(check_response.data) > 0
             
-            if len(response.data) == 0:
-                # Step 2: Agar CHECK_TABLE me nahi hai, toh entry seedha DRAFT_TABLE (data_points_draft) me jayegi
-                print(f"Data missing in '{CHECK_TABLE}'! Table '{DRAFT_TABLE}' me draft insert ho raha hai...")
-                period_start, period_end = parse_monthly_dates(period_label)
-                
-                data_to_insert = {
-                    "dataset_id": DATASET_ID,
-                    "period_type": "MONTH",
-                    "period_label": period_label,
-                    "period_start": period_start,
-                    "period_end": period_end,
-                    "value": value,
-                    "note": "NEW",
-                    "is_active": False,  
-                    "source_note": "via AUTOMATION"
-                }
-                
-                insert_resp = supabase.table(DRAFT_TABLE).insert(data_to_insert).execute()
-                print(f"SUCCESS: Month {period_label} ka naya data '{DRAFT_TABLE}' me chala gaya.")
-            else:
-                # Step 3: Agar CHECK_TABLE me data mil gaya, toh value match karke usi table me update karenge
-                existing_record = response.data[0]
-                existing_id = existing_record.get("id")
-                existing_value = float(existing_record.get("value"))
-                
-                if existing_value != value:
-                    print(f"Gadbadi mili! Supabase ({CHECK_TABLE}): {existing_value} vs Extracted: {value}. Correction shuru...")
-                    correction_note = f"Updated datapoint from {existing_value} to {value}"
-                    
-                    query = supabase.table(CHECK_TABLE).update({"value": value, "note": correction_note})
-                    if existing_id:
-                        update_resp = query.eq("id", existing_id).execute()
-                    else:
-                        update_resp = query.eq("dataset_id", DATASET_ID).eq("period_label", period_label).execute()
-                        
-                    print(f"SUCCESS: Table '{CHECK_TABLE}' correction done -> {correction_note}")
-                else:
-                    print(f"Month {period_label} ka data '{CHECK_TABLE}' me perfectly match ho raha hai.")
+            if exists_in_check:
+                print(f"Skip: '{period_label}' already '{CHECK_TABLE}' me maujood hai.")
+                continue
+            
+            # Step 2: CHECK_TABLE me nahi mila, ab DRAFT_TABLE (data_points_draft) me bhi check karo
+            draft_response = supabase.table(DRAFT_TABLE).select("period_label").eq("dataset_id", DATASET_ID).eq("period_label", period_label).execute()
+            exists_in_draft = len(draft_response.data) > 0
+            
+            if exists_in_draft:
+                print(f"Skip: '{period_label}' already '{DRAFT_TABLE}' me maujood hai.")
+                continue
+            
+            # Step 3: Dono tables me nahi mila - matlab genuinely naya data hai, DRAFT_TABLE me insert karo
+            print(f"'{period_label}' dono tables me absent hai. '{DRAFT_TABLE}' me naya insert ho raha hai...")
+            period_start, period_end = parse_monthly_dates(period_label)
+            
+            data_to_insert = {
+                "dataset_id": DATASET_ID,
+                "period_type": "MONTH",
+                "period_label": period_label,
+                "period_start": period_start,
+                "period_end": period_end,
+                "value": value,
+                "note": "NEW",
+                "is_active": False,  
+                "source_note": "via AUTOMATION"
+            }
+            
+            insert_resp = supabase.table(DRAFT_TABLE).insert(data_to_insert).execute()
+            print(f"SUCCESS: Month {period_label} ka naya data '{DRAFT_TABLE}' me chala gaya.")
                     
         except Exception as row_err:
             print(f"Row operation error: {row_err}")
