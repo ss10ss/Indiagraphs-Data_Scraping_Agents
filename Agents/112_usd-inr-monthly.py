@@ -109,10 +109,10 @@ def navigate_to_table(driver, wait):
     time.sleep(3)
     driver.save_screenshot("step2_search_text_entered.png")
 
-    print("Dropdown select ho raha hai: With all of the words...")
-    dropdown_element = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "select.dropdown_search")))
+    print("Dropdown select ho raha hai...")
+    dropdown_element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "select.dropdown")))
     select_filter = Select(dropdown_element)
-    select_filter.select_by_value("allwords")
+    select_filter.select_by_value("oneormorewords")
     time.sleep(3)
     driver.save_screenshot("step3_dropdown_selected.png")
 
