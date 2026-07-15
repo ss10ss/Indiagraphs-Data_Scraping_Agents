@@ -1,4 +1,5 @@
 import time
+import sys
 from datetime import datetime
 import calendar
 from selenium import webdriver
@@ -211,6 +212,7 @@ try:
     scraped_data_list.reverse()
 
     valid_rows_count = 0
+    failed_rows = []
     for item in scraped_data_list:
         try:
             period_label = item["period_label"]
@@ -255,9 +257,20 @@ try:
                     
         except Exception as row_err:
             print(f"Row operation error: {row_err}")
+            failed_rows.append({"period_label": item.get("period_label", "unknown"), "error": str(row_err)})
             continue
 
     print(f"\nScraping complete! Total {valid_rows_count} monthly rows process ki gayi hain.")
+
+    if valid_rows_count == 0:
+        print("CRITICAL: Ek bhi row scrape nahi hui - site structure badal gayi ho sakti hai ya selectors fail hue.")
+        sys.exit(1)
+
+    if failed_rows:
+        print(f"\nWARNING: {len(failed_rows)} row(s) process karte waqt fail hui:")
+        for f in failed_rows:
+            print(f"  - {f['period_label']}: {f['error']}")
+        sys.exit(1)
 
 finally:
     try:
