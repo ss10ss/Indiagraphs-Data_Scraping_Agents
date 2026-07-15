@@ -2,7 +2,8 @@ name: 112_usd-inr-monthly
 
 on:
   schedule:
-    - cron: '30 6 15-25 * *'   # Roz 15-25 tarikh, 12:00 PM IST (06:30 UTC) - jab tak data mil jaaye
+    - cron: '30 3 15-25 * *'   # Roz 15-25 tarikh, 9:00 AM IST (03:30 UTC) - jab tak data mil jaaye
+    
   workflow_dispatch:
 
 concurrency:
