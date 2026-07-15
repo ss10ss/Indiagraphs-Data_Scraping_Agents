@@ -11,18 +11,18 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import Select
 from webdriver_manager.chrome import ChromeDriverManager
 from supabase import create_client, Client
+import os
 
 # =====================================================================
 # CONFIGURATION: Target Tables & Dataset Specs
 # =====================================================================
-CHECK_TABLE = "data_points"   
-DRAFT_TABLE = "data_points_draft"   
-DATASET_ID = 111
+CHECK_TABLE = "data_points"
+DRAFT_TABLE = "data_points_draft"
+DATASET_ID = 112
 MAX_NAV_ATTEMPTS = 3   # Poori navigation (site load se table tak) kitni baar retry ho
 # =====================================================================
 
 # Supabase Credentials
-import os
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "YOUR_SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "YOUR_SUPABASE_KEY")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -59,23 +59,23 @@ def parse_monthly_dates(period_label):
         parts = period_label.strip().split()
         if len(parts) != 2:
             return None, None
-        
+
         month_str, year_str = parts[0].title(), parts[1]
         month_modules = {v: k for k, v in enumerate(calendar.month_abbr)}
         month_num = month_modules.get(month_str[:3])
-        
+
         if not month_num:
             month_modules_full = {v: k for k, v in enumerate(calendar.month_name)}
             month_num = month_modules_full.get(month_str)
-            
+
         if not month_num:
             return None, None
-            
+
         year = int(year_str)
         start_date = f"{year}-{month_num:02d}-01"
         last_day = calendar.monthrange(year, month_num)[1]
         end_date = f"{year}-{month_num:02d}-{last_day:02d}"
-        
+
         return start_date, end_date
     except Exception as e:
         print(f"Monthly Date parse karne me error: {e}")
@@ -101,18 +101,18 @@ def navigate_to_table(driver, wait):
     except Exception:
         pass
 
-    print("Search box me 'gold average' enter ho raha hai...")
+    print("Search box me 'usd to inr' enter ho raha hai...")
     search_box = wait.until(EC.presence_of_element_located((By.XPATH, "//input[@type='search' or @placeholder='Search']")))
     driver.execute_script("arguments[0].click();", search_box)
     driver.execute_script("arguments[0].value = '';", search_box)
-    search_box.send_keys("gold average")
+    search_box.send_keys("usd to inr")
     time.sleep(3)
     driver.save_screenshot("step2_search_text_entered.png")
 
-    print("Dropdown select ho raha hai...")
-    dropdown_element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "select.dropdown")))
-    select = Select(dropdown_element)
-    select.select_by_value("oneormorewords")
+    print("Dropdown select ho raha hai: With all of the words...")
+    dropdown_element = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "select.dropdown_search")))
+    select_filter = Select(dropdown_element)
+    select_filter.select_by_value("allwords")
     time.sleep(3)
     driver.save_screenshot("step3_dropdown_selected.png")
 
@@ -125,8 +125,8 @@ def navigate_to_table(driver, wait):
     time.sleep(15)
     driver.save_screenshot("step4_results_updated.png")
 
-    print("Monthly Link par click ho raha hai...")
-    monthly_link = wait.until(EC.element_to_be_clickable((By.XPATH, "//a[contains(text(), 'Monthly Average Price of Gold and Silver')]")))
+    print("USD to INR Monthly Average Rate Link par click ho raha hai...")
+    monthly_link = wait.until(EC.element_to_be_clickable((By.XPATH, "//a[contains(text(), 'Exchange Rate of the Indian Rupee vis-a-vis the SDR, US Dollar, Pound Sterling (Monthly Average and End-Month Rates)')]")))
 
     main_window = driver.current_window_handle
     try:
@@ -155,7 +155,7 @@ def navigate_to_table(driver, wait):
     print("Successfully switched inside data iframe.")
 
     print("Table elements validation loop shuru...")
-    wait.until(EC.presence_of_all_elements_located((By.XPATH, "//*[@bid='4827' or @bid='4826' or @bid='4944']")))
+    wait.until(EC.presence_of_all_elements_located((By.XPATH, "//*[@bid='790' or @bid='791']")))
     print("SUCCESS: Table load ho gayi, elements mil chuke hain.")
     driver.save_screenshot("step6_data_tab_loaded.png")
 
@@ -191,36 +191,22 @@ try:
         sys.exit(1)
 
     print("Monthly Data processing shuru...")
-    table_rows = driver.find_elements(By.XPATH, "//tr[th[@bid='4944'] or td[@bid='4827']]")
-    
+    table_rows = driver.find_elements(By.XPATH, "//tr[td[@bid='790']]")
+
     scraped_data_list = []
-    current_fy = None
-    
+
     for row in table_rows:
         try:
-            year_headers = row.find_elements(By.XPATH, "./th[@bid='4944']//span")
-            if year_headers:
-                current_fy = year_headers[0].get_attribute("textContent").strip()
-                continue
-                
-            month_elements = row.find_elements(By.XPATH, "./td[@bid='4827' and @c='0']//span")
-            # CHANGED: @c='1' ki jagah @c='5' kiya hai (Mumbai Silver Column ke liye)
-            val_elements = row.find_elements(By.XPATH, "./td[@bid='4826' and @c='5']//span")
-            
-            if month_elements and val_elements and current_fy:
-                raw_month = month_elements[0].get_attribute("textContent").strip().title()
+            month_elements = row.find_elements(By.XPATH, "./td[@bid='790' and @c='1']//span")
+            val_elements = row.find_elements(By.XPATH, "./td[@bid='791' and @c='4']//span")
+
+            if month_elements and val_elements:
+                raw_month = month_elements[0].get_attribute("textContent").strip()
                 raw_val = val_elements[0].get_attribute("textContent").strip()
-                
+
                 if raw_month and raw_val:
-                    fy_start = int(current_fy.split('-')[0].strip())
-                    fy_end = int(current_fy.split('-')[1].strip())
-                    if len(str(fy_end)) == 2:
-                        fy_end = int(str(fy_start)[:2] + str(fy_end))
-                        
-                    target_year = fy_end if raw_month.upper() in ["JAN", "FEB", "MAR"] else fy_start
-                    full_period_label = f"{raw_month} {target_year}"
-                    
-                    val = int(round(float(raw_val.replace(',', '').strip())))
+                    full_period_label = raw_month.replace('-', ' ').strip().title()
+                    val = float(raw_val.replace(',', '').strip())
                     scraped_data_list.append({"period_label": full_period_label, "value": val})
         except Exception:
             continue
@@ -234,30 +220,30 @@ try:
         try:
             period_label = item["period_label"]
             value = item["value"]
-            
+
             valid_rows_count += 1
-            print(f"\nProcessing Monthly Row {valid_rows_count} -> Month: {period_label}, Price: {value}")
-            
+            print(f"\nProcessing Monthly Row {valid_rows_count} -> Month: {period_label}, Value: {value}")
+
             # Step 1: Check karo ki ye period_label CHECK_TABLE (data_points) me exist karta hai?
             check_response = supabase.table(CHECK_TABLE).select("period_label").eq("dataset_id", DATASET_ID).eq("period_label", period_label).execute()
             exists_in_check = len(check_response.data) > 0
-            
+
             if exists_in_check:
                 print(f"Skip: '{period_label}' already '{CHECK_TABLE}' me maujood hai.")
                 continue
-            
+
             # Step 2: CHECK_TABLE me nahi mila, ab DRAFT_TABLE (data_points_draft) me bhi check karo
             draft_response = supabase.table(DRAFT_TABLE).select("period_label").eq("dataset_id", DATASET_ID).eq("period_label", period_label).execute()
             exists_in_draft = len(draft_response.data) > 0
-            
+
             if exists_in_draft:
                 print(f"Skip: '{period_label}' already '{DRAFT_TABLE}' me maujood hai.")
                 continue
-            
+
             # Step 3: Dono tables me nahi mila - matlab genuinely naya data hai, DRAFT_TABLE me insert karo
             print(f"'{period_label}' dono tables me absent hai. '{DRAFT_TABLE}' me naya insert ho raha hai...")
             period_start, period_end = parse_monthly_dates(period_label)
-            
+
             data_to_insert = {
                 "dataset_id": DATASET_ID,
                 "period_type": "MONTH",
@@ -268,10 +254,10 @@ try:
                 "is_active": False,
                 "created_by": "c7dcaab6-1312-4d08-8b39-d327827d885f"
             }
-            
+
             insert_resp = supabase.table(DRAFT_TABLE).insert(data_to_insert).execute()
             print(f"SUCCESS: Month {period_label} ka naya data '{DRAFT_TABLE}' me chala gaya.")
-                    
+
         except Exception as row_err:
             print(f"Row operation error: {row_err}")
             failed_rows.append({"period_label": item.get("period_label", "unknown"), "error": str(row_err)})
