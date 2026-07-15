@@ -2,12 +2,17 @@ name: 1_gold-price-yearly
 
 on:
   schedule:
-    - cron: '0 0 15 * *'   # Yearly execution cycle (1st April)
+    - cron: '30 6 10 * *'   # Har mahine 10 tarikh, 12:00 PM IST (06:30 UTC) - jab tak naya FY data mile
   workflow_dispatch:
+
+concurrency:
+  group: 1_gold-price-yearly
+  cancel-in-progress: false
 
 jobs:
   gold-price-yearly:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout Repository
