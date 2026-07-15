@@ -2,7 +2,7 @@ name: 111_silver-price-monthly
 
 on:
   schedule:
-    - cron: '0 0 15 * *'   # Monthly execution cycle
+    - cron: '30 6 15-25 * *'   # Roz 15-25 tarikh, 12:00 PM IST (06:30 UTC) - jab tak data mil jaaye
   workflow_dispatch:
 
 concurrency:
