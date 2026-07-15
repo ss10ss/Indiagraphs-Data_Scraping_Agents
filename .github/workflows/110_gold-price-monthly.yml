@@ -2,12 +2,17 @@ name: 110_gold-price-monthly
 
 on:
   schedule:
-    - cron: '0 0 15 * *'   # Monthly execution cycle
+    - cron: '30 6 15-25 * *'   # Roz 15-25 tarikh, 12:00 PM IST (06:30 UTC) - jab tak data mil jaaye
   workflow_dispatch:
+
+concurrency:
+  group: 110_gold-price-monthly
+  cancel-in-progress: false
 
 jobs:
   gold-price-monthly:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
     - name: Checkout Repository
