@@ -248,7 +248,7 @@ try:
 
             data_to_insert = {
                 "dataset_id": DATASET_ID,
-                "period_type": "YEAR",
+                "period_type": "FY",
                 "period_label": period_label,
                 "period_start": period_start,
                 "period_end": period_end,
