@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: 067_total-digital-payments-volume-monthly
+  group: 067_TDP-volume-monthly
   cancel-in-progress: false
 
 jobs:
