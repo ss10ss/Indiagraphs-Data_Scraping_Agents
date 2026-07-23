@@ -37,7 +37,7 @@ jobs:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: |
           cd Agents
-          python 067_total-digital-payments-volume-monthly.py
+          python 067_TDP-volume-monthly.py
 
       - name: Upload Debug Screenshots
         if: always()
