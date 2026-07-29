@@ -113,7 +113,19 @@ def navigate_to_table(driver, wait):
     print("Dropdown se 'with all of the words' select ho raha hai...")
     dropdown_element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "select.dropdown")))
     select_filter = Select(dropdown_element)
-    select_filter.select_by_visible_text("with all of the words")
+
+    target_option = None
+    for option in select_filter.options:
+        option_text = (option.get_attribute("textContent") or "").strip().lower()
+        if "all of the words" in option_text or "all these words" in option_text:
+            target_option = option
+            break
+
+    if target_option is None:
+        available = [opt.get_attribute("textContent").strip() for opt in select_filter.options]
+        raise Exception(f"'all of the words' jaisa koi dropdown option nahi mila. Available options: {available}")
+
+    select_filter.select_by_value(target_option.get_attribute("value"))
     time.sleep(3)
     driver.save_screenshot("step3_dropdown_selected.png")
 
