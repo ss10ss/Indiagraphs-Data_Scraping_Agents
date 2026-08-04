@@ -246,7 +246,12 @@ try:
         sys.exit(1)
 
     print("Monthly Data processing shuru...")
+    try:
+        wait.until(lambda d: len(d.find_elements(By.XPATH, "//td[@bid='984']")) >= 5)
+    except Exception:
+        print("WARNING: 5 second-wait ke baad bhi 5 month cells nahi mile, jo mila usi se aage badh rahe hain.")
     month_cells = driver.find_elements(By.XPATH, "//td[@bid='984']")
+    print(f"Total month cells mile: {len(month_cells)}")
 
     scraped_data_list = []
 
@@ -259,13 +264,16 @@ try:
 
             month_span = cell.find_elements(By.XPATH, ".//span")
             if not month_span:
+                print(f"Skip (suffix {suffix}): month span nahi mila - row shayad viewport ke bahar/unrendered hai.")
                 continue
             raw_month = month_span[0].get_attribute("textContent").strip()
             if not raw_month:
+                print(f"Skip (suffix {suffix}): month text khali hai.")
                 continue
 
             raw_val = extract_value_for_suffix(driver, suffix)
             if not raw_val:
+                print(f"Skip (suffix {suffix}, month {raw_month}): value nahi mila (td span ya overlay dono me).")
                 continue
 
             full_period_label = raw_month.replace('-', ' ').strip().title()
