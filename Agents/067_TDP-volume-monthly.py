@@ -277,7 +277,7 @@ try:
                 continue
 
             full_period_label = raw_month.replace('-', ' ').strip().title()
-            val = float(raw_val.replace(',', '').strip())
+            val = float(raw_val.replace(',', '').strip()) / 10   # Lakh -> Million
             scraped_data_list.append({"period_label": full_period_label, "value": val})
         except Exception:
             continue
