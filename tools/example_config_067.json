@@ -1,0 +1,18 @@
+{
+  "dataset_id": 67,
+  "workflow_name": "067_total-digital-payments-volume-monthly",
+  "file_name": "067_total-digital-payments-volume-monthly",
+  "search_text": "digital payments",
+  "dropdown_filter": "all of the words",
+  "report_link_text": "Payment System Indicators",
+  "requires_new_format_tab": true,
+  "extraction_mode": "idref_suffix",
+  "month_bid": "984",
+  "value_bid": "893",
+  "value_idref_prefix": "2.Dz.1I",
+  "conversion": "decimal_shift_left_1",
+  "period_type": "MONTH",
+  "rows_to_scrape": 5,
+  "cron": "30 3 15-25 * *",
+  "cron_comment": "Runs daily from the 15th-25th at 9:00 AM IST (03:30 UTC) - retries until the data is published"
+}
