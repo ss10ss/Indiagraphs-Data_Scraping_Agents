@@ -1,0 +1,47 @@
+name: 068_TDP-value-monthly
+
+on:
+  schedule:
+    - cron: '30 3 15-25 * *'   # Runs daily from the 15th-25th at 9:00 AM IST (03:30 UTC) - retries until the data is published
+
+  workflow_dispatch:
+
+concurrency:
+  group: 068_TDP-value-monthly
+  cancel-in-progress: false
+
+jobs:
+  TDP-value-monthly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Chrome & Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+          python -m pip install --upgrade pip
+          pip install selenium webdriver-manager supabase
+
+      - name: Run Scraper Script
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: |
+          cd Agents
+          python 068_TDP-value-monthly.py
+
+      - name: Upload Debug Screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: monthly-digital-payments-value-step-screenshots
+          path: Agents/step*.png
