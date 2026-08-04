@@ -1,4 +1,4 @@
-name: 067_total-digital-payments-volume-monthly
+name: 067_TDP-volume-monthly
 
 on:
   schedule:
