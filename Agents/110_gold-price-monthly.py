@@ -1,5 +1,5 @@
 
-converted_code = '''import time
+import time
 import sys
 from datetime import datetime
 import calendar
