@@ -1,4 +1,5 @@
-import time
+
+converted_code = '''import time
 import sys
 from datetime import datetime
 import calendar
@@ -18,7 +19,7 @@ from supabase import create_client, Client
 CHECK_TABLE = "data_points"   
 DRAFT_TABLE = "data_points_draft"   
 DATASET_ID = 110
-MAX_NAV_ATTEMPTS = 3   # Poori navigation (site load se table tak) kitni baar retry ho
+MAX_NAV_ATTEMPTS = 3   # Number of full navigation retries (site load through table load)
 # =====================================================================
 
 # Supabase Credentials
@@ -27,7 +28,7 @@ SUPABASE_URL = os.environ.get("SUPABASE_URL", "YOUR_SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "YOUR_SUPABASE_KEY")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# Options Setup
+# Chrome Options Setup
 chrome_options = Options()
 chrome_options.add_argument("--headless=new")
 chrome_options.add_argument("--no-sandbox")
@@ -53,7 +54,7 @@ def create_driver():
 
 def parse_monthly_dates(period_label):
     """
-    Format handle karta hai: 'Mar 2026' -> (2026-03-01, 2026-03-31)
+    Handles the format: 'Mar 2026' -> (2026-03-01, 2026-03-31)
     """
     try:
         parts = period_label.strip().split()
@@ -78,19 +79,19 @@ def parse_monthly_dates(period_label):
         
         return start_date, end_date
     except Exception as e:
-        print(f"Monthly Date parse karne me error: {e}")
+        print(f"Error parsing monthly date: {e}")
         return None, None
 
 
 def navigate_to_table(driver, wait):
     """
-    Site kholne se lekar data table load hone tak ka poora flow.
-    Kisi bhi step pe fail hone par Exception raise karta hai (calling code retry karega).
+    Full flow from opening the site to the data table being loaded.
+    Raises an Exception on failure at any step (caller handles the retry).
     """
-    print("Page open ho raha hai...")
+    print("Opening page...")
     driver.get("https://data.rbi.org.in/DBIE/#/dbie/searchresult")
 
-    print("Settle hone ke liye explicitly wait kar rahe hain...")
+    print("Waiting explicitly for the page to settle...")
     time.sleep(12)
     driver.save_screenshot("step1_initial_page.png")
 
@@ -101,7 +102,7 @@ def navigate_to_table(driver, wait):
     except Exception:
         pass
 
-    print("Search box me 'gold average' enter ho raha hai...")
+    print("Entering 'gold average' in the search box...")
     search_box = wait.until(EC.presence_of_element_located((By.XPATH, "//input[@type='search' or @placeholder='Search']")))
     driver.execute_script("arguments[0].click();", search_box)
     driver.execute_script("arguments[0].value = '';", search_box)
@@ -109,14 +110,14 @@ def navigate_to_table(driver, wait):
     time.sleep(3)
     driver.save_screenshot("step2_search_text_entered.png")
 
-    print("Dropdown select ho raha hai...")
+    print("Selecting dropdown...")
     dropdown_element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "select.dropdown")))
     select = Select(dropdown_element)
     select.select_by_value("oneormorewords")
     time.sleep(3)
     driver.save_screenshot("step3_dropdown_selected.png")
 
-    print("Update Results button par click ho raha hai...")
+    print("Clicking the Update Results button...")
     update_btn = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "button.search_button")))
     try:
         update_btn.click()
@@ -125,7 +126,7 @@ def navigate_to_table(driver, wait):
     time.sleep(15)
     driver.save_screenshot("step4_results_updated.png")
 
-    print("Monthly Link par click ho raha hai...")
+    print("Clicking the Monthly link...")
     monthly_link = wait.until(EC.element_to_be_clickable((By.XPATH, "//a[contains(text(), 'Monthly Average Price of Gold and Silver')]")))
 
     main_window = driver.current_window_handle
@@ -134,7 +135,7 @@ def navigate_to_table(driver, wait):
     except Exception:
         driver.execute_script("arguments[0].click();", monthly_link)
 
-    print("Link click ho gaya. Naya tab open hone ka dynamic wait...")
+    print("Link clicked. Waiting dynamically for the new tab to open...")
     wait.until(lambda d: len(d.window_handles) > 1)
     driver.save_screenshot("step5_link_clicked.png")
 
@@ -143,36 +144,36 @@ def navigate_to_table(driver, wait):
         for handle in current_handles:
             if handle != main_window:
                 driver.switch_to.window(handle)
-                print("Naye tab par switch successfully ho gaye.")
+                print("Successfully switched to the new tab.")
                 break
 
-    print("Loading spinner ke khatam hone ka explicit wait...")
+    print("Waiting for the loading spinner to finish...")
     time.sleep(8)
 
-    print("Iframe dhoondh kar switch kiya ja raha hai...")
+    print("Locating and switching into the iframe...")
     iframe_element = wait.until(EC.presence_of_element_located((By.XPATH, "//iframe | //frame")))
     driver.switch_to.frame(iframe_element)
-    print("Successfully switched inside data iframe.")
+    print("Successfully switched inside the data iframe.")
 
-    print("Table elements validation loop shuru...")
+    print("Waiting for table elements to be validated...")
     wait.until(EC.presence_of_all_elements_located((By.XPATH, "//*[@bid='4827' or @bid='4826' or @bid='4944']")))
-    print("SUCCESS: Table load ho gayi, elements mil chuke hain.")
+    print("SUCCESS: Table loaded, elements found.")
     driver.save_screenshot("step6_data_tab_loaded.png")
 
 
 driver, wait = create_driver()
 
 try:
-    # ---- Poore navigation flow ko retry ke saath chalao ----
+    # ---- Run the full navigation flow with retries ----
     navigation_success = False
     for attempt in range(1, MAX_NAV_ATTEMPTS + 1):
         try:
-            print(f"\n--- Navigation attempt {attempt}/{MAX_NAV_ATTEMPTS} ---")
+            print(f"\\n--- Navigation attempt {attempt}/{MAX_NAV_ATTEMPTS} ---")
             navigate_to_table(driver, wait)
             navigation_success = True
             break
         except Exception as e:
-            print(f"Navigation attempt {attempt} me error aaya: {e}")
+            print(f"Error during navigation attempt {attempt}: {e}")
             try:
                 driver.save_screenshot(f"step_fail_attempt{attempt}.png")
             except Exception:
@@ -187,10 +188,10 @@ try:
             driver, wait = create_driver()
 
     if not navigation_success:
-        print("CRITICAL: Saare navigation attempts fail ho gaye.")
+        print("CRITICAL: All navigation attempts failed.")
         sys.exit(1)
 
-    print("Monthly Data processing shuru...")
+    print("Starting monthly data processing...")
     table_rows = driver.find_elements(By.XPATH, "//tr[th[@bid='4944'] or td[@bid='4827']]")
     
     scraped_data_list = []
@@ -235,26 +236,26 @@ try:
             value = item["value"]
             
             valid_rows_count += 1
-            print(f"\nProcessing Monthly Row {valid_rows_count} -> Month: {period_label}, Price: {value}")
+            print(f"\\nProcessing Monthly Row {valid_rows_count} -> Month: {period_label}, Price: {value}")
             
-            # Step 1: Check karo ki ye period_label CHECK_TABLE (data_points) me exist karta hai?
+            # Step 1: Check if this period_label already exists in CHECK_TABLE (data_points)
             check_response = supabase.table(CHECK_TABLE).select("period_label").eq("dataset_id", DATASET_ID).eq("period_label", period_label).execute()
             exists_in_check = len(check_response.data) > 0
             
             if exists_in_check:
-                print(f"Skip: '{period_label}' already '{CHECK_TABLE}' me maujood hai.")
+                print(f"Skip: '{period_label}' already exists in '{CHECK_TABLE}'.")
                 continue
             
-            # Step 2: CHECK_TABLE me nahi mila, ab DRAFT_TABLE (data_points_draft) me bhi check karo
+            # Step 2: Not found in CHECK_TABLE, now check DRAFT_TABLE (data_points_draft) too
             draft_response = supabase.table(DRAFT_TABLE).select("period_label").eq("dataset_id", DATASET_ID).eq("period_label", period_label).execute()
             exists_in_draft = len(draft_response.data) > 0
             
             if exists_in_draft:
-                print(f"Skip: '{period_label}' already '{DRAFT_TABLE}' me maujood hai.")
+                print(f"Skip: '{period_label}' already exists in '{DRAFT_TABLE}'.")
                 continue
             
-            # Step 3: Dono tables me nahi mila - matlab genuinely naya data hai, DRAFT_TABLE me insert karo
-            print(f"'{period_label}' dono tables me absent hai. '{DRAFT_TABLE}' me naya insert ho raha hai...")
+            # Step 3: Not found in either table - genuinely new data, insert into DRAFT_TABLE
+            print(f"'{period_label}' is absent from both tables. Inserting new record into '{DRAFT_TABLE}'...")
             period_start, period_end = parse_monthly_dates(period_label)
             
             data_to_insert = {
@@ -269,21 +270,21 @@ try:
             }
             
             insert_resp = supabase.table(DRAFT_TABLE).insert(data_to_insert).execute()
-            print(f"SUCCESS: Month {period_label} ka naya data '{DRAFT_TABLE}' me chala gaya.")
+            print(f"SUCCESS: New data for {period_label} inserted into '{DRAFT_TABLE}'.")
                     
         except Exception as row_err:
             print(f"Row operation error: {row_err}")
             failed_rows.append({"period_label": item.get("period_label", "unknown"), "error": str(row_err)})
             continue
 
-    print(f"\nScraping complete! Total {valid_rows_count} monthly rows process ki gayi hain.")
+    print(f"\\nScraping complete! Total {valid_rows_count} monthly rows processed.")
 
     if valid_rows_count == 0:
-        print("CRITICAL: Ek bhi row scrape nahi hui - site structure badal gayi ho sakti hai ya selectors fail hue.")
+        print("CRITICAL: Not a single row was scraped - the site structure may have changed or selectors failed.")
         sys.exit(1)
 
     if failed_rows:
-        print(f"\nWARNING: {len(failed_rows)} row(s) process karte waqt fail hui:")
+        print(f"\\nWARNING: {len(failed_rows)} row(s) failed while processing:")
         for f in failed_rows:
             print(f"  - {f['period_label']}: {f['error']}")
         sys.exit(1)
@@ -294,3 +295,9 @@ finally:
     except Exception:
         pass
     print("Browser closed.")
+'''
+
+with open('/mnt/agents/output/110_gold-average-monthly.py', 'w') as f:
+    f.write(converted_code)
+
+print("File saved successfully.")
