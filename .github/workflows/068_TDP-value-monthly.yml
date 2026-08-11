@@ -1,4 +1,4 @@
-name: 68_TDP-value-monthly
+name: 068_TDP-value-monthly
 
 on:
   schedule:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: 68_TDP-value-monthly
+  group: 068_TDP-value-monthly
   cancel-in-progress: false
 
 jobs:
@@ -37,7 +37,7 @@ jobs:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: |
           cd Agents
-          python 68_TDP-value-monthly.py
+          python 068_TDP-value-monthly.py
 
       - name: Upload Debug Screenshots
         if: always()
