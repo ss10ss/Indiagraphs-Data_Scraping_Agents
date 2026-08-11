@@ -1,4 +1,4 @@
-name: 6_silver-price-yearly
+name: 006_silver-price-yearly
 
 on:
   schedule:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: 6_silver-price-yearly
+  group: 006_silver-price-yearly
   cancel-in-progress: false
 
 jobs:
@@ -37,7 +37,7 @@ jobs:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: |
           cd Agents
-          python 6_silver-price-yearly.py
+          python 006_silver-price-yearly.py
 
       - name: Upload Debug Screenshots
         if: always()
