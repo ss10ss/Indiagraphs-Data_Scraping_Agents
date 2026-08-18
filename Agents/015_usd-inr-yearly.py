@@ -77,6 +77,25 @@ def parse_yearly_dates(period_label):
         return None, None
 
 
+def period_exists(table_name, dataset_id, period_label):
+    """
+    Checks whether a period_label exists in a table - a direct match, plus a
+    safe fallback that normalizes en-dash/hyphen differences (older rows in
+    this dataset use an en-dash, e.g. '2023–24' vs the scraped '2023-24').
+    """
+    response = supabase.table(table_name).select("period_label").eq("dataset_id", dataset_id).eq("period_label", period_label).execute()
+    if len(response.data) > 0:
+        return True
+
+    all_records = supabase.table(table_name).select("period_label").eq("dataset_id", dataset_id).execute()
+    normalized_target = period_label.replace("–", "-").strip()
+    for rec in all_records.data:
+        db_label = rec.get("period_label", "").replace("–", "-").strip()
+        if db_label == normalized_target:
+            return True
+    return False
+
+
 def navigate_to_table(driver, wait):
     """
     Full flow from opening the site to the data table being loaded.
@@ -227,18 +246,12 @@ try:
             print(f"\nProcessing Yearly Row {valid_rows_count} -> Year: {period_label}, Value: {value}")
 
             # Step 1: Check if this period_label already exists in CHECK_TABLE (data_points)
-            check_response = supabase.table(CHECK_TABLE).select("period_label").eq("dataset_id", DATASET_ID).eq("period_label", period_label).execute()
-            exists_in_check = len(check_response.data) > 0
-
-            if exists_in_check:
+            if period_exists(CHECK_TABLE, DATASET_ID, period_label):
                 print(f"Skip: '{period_label}' already exists in '{CHECK_TABLE}'.")
                 continue
 
             # Step 2: Not found in CHECK_TABLE, now check DRAFT_TABLE (data_points_draft) too
-            draft_response = supabase.table(DRAFT_TABLE).select("period_label").eq("dataset_id", DATASET_ID).eq("period_label", period_label).execute()
-            exists_in_draft = len(draft_response.data) > 0
-
-            if exists_in_draft:
+            if period_exists(DRAFT_TABLE, DATASET_ID, period_label):
                 print(f"Skip: '{period_label}' already exists in '{DRAFT_TABLE}'.")
                 continue
 
