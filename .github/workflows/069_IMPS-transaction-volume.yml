@@ -1,4 +1,4 @@
-name: 069_IMPS-transaction-volume
+name: 069_IMPS-txn-volume
 
 on:
   schedule:
@@ -7,11 +7,11 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: 069_IMPS-transaction-volume
+  group: 069_IMPS-txn-volume
   cancel-in-progress: false
 
 jobs:
-  IMPS-transaction-volume:
+  IMPS-txn-volume:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -37,7 +37,7 @@ jobs:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: |
           cd Agents
-          python 069_IMPS-transaction-volume.py
+          python 069_IMPS-txn-volume.py
 
       - name: Upload Debug Screenshots
         if: always()
