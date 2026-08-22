@@ -1,4 +1,4 @@
-name: 070_IMPS_txn_value
+name: 070_IMPS-txn-value
 
 on:
   schedule:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: 070_IMPS_txn_value
+  group: 070_IMPS-txn-value
   cancel-in-progress: false
 
 jobs:
@@ -37,7 +37,7 @@ jobs:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: |
           cd Agents
-          python 070_IMPS_txn_value.py
+          python 070_IMPS-txn-value.py
 
       - name: Upload Debug Screenshots
         if: always()
