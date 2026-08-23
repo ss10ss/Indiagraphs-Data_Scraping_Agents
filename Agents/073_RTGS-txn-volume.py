@@ -19,7 +19,7 @@ import os
 # =====================================================================
 CHECK_TABLE = "data_points"
 DRAFT_TABLE = "data_points_draft"
-DATASET_ID = 71
+DATASET_ID = 73
 MAX_NAV_ATTEMPTS = 3   # Number of full navigation retries (site load through table load)
 # =====================================================================
 
@@ -246,7 +246,7 @@ def extract_value_for_suffix(driver, suffix):
     renders differently (as an overlay div with no span in it) - in that
     case the value is pulled from its aria-label attribute instead.
     """
-    idref = f"2.Dz.W.{suffix}"
+    idref = f"2.Dz.E.{suffix}"
 
     # Normal case: plain td > span
     try:
