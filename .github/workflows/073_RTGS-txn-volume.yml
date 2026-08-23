@@ -1,0 +1,47 @@
+name: 073_RTGS-txn-volume
+
+on:
+  schedule:
+    - cron: '30 3 15-25 * *'   # Runs daily from the 15th-25th at 9:00 AM IST (03:30 UTC) - retries until the data is published
+
+  workflow_dispatch:
+
+concurrency:
+  group: 073_RTGS-txn-volume
+  cancel-in-progress: false
+
+jobs:
+  RTGS-txn-volume:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Chrome & Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+          python -m pip install --upgrade pip
+          pip install selenium webdriver-manager supabase
+
+      - name: Run Scraper Script
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: |
+          cd Agents
+          python 073_RTGS-txn-volume.py
+
+      - name: Upload Debug Screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RTGS-txn-volume-step-screenshots
+          path: Agents/step*.png
