@@ -110,7 +110,7 @@ def parse_value(raw_val):
     """
     cleaned = raw_val.replace(',', '').strip()
     val = int(cleaned) if '.' not in cleaned else float(cleaned)
-    return val / 10
+    return round(val / 10, 3)
 
 
 def navigate_to_table(driver, wait):
