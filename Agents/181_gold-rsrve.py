@@ -1,3 +1,4 @@
+// Agents/181_gold-rsrve.py //
 import time
 import re
 import sys
@@ -197,28 +198,7 @@ def navigate_to_table(driver, wait):
     driver.switch_to.frame(iframe_element)
     print("Successfully switched inside the data iframe.")
 
-    print("Selecting the 'New Format' tab...")
-    new_format_selected = False
-    for tab_attempt in range(1, 4):
-        try:
-            new_format_tab = wait.until(EC.element_to_be_clickable((By.XPATH, "//div[@title='New Format']")))
-            driver.execute_script("arguments[0].click();", new_format_tab)
-            time.sleep(3)
-            tab_class = new_format_tab.get_attribute("class") or ""
-            if "sapMTabStripItemSelected" in tab_class:
-                new_format_selected = True
-                print(f"'New Format' tab confirmed selected (attempt {tab_attempt}).")
-                break
-            print(f"'New Format' tab click attempt {tab_attempt} did not register as selected, retrying...")
-        except Exception as e:
-            print(f"'New Format' tab click attempt {tab_attempt} raised an error: {e}")
-        time.sleep(2)
-
-    driver.save_screenshot("step5b_new_format_selected.png")
-
-    if not new_format_selected:
-        raise Exception("Could not confirm 'New Format' tab got selected after retries - table would load in Old Format layout.")
-
+    # NOTE: Foreign Exchange Reserves table loads directly without a "New Format" tab.
     print("Waiting for table elements to be validated...")
     wait.until(EC.presence_of_all_elements_located((By.XPATH, "//td[@bid='5632']")))
     print("SUCCESS: Table loaded, elements found.")
