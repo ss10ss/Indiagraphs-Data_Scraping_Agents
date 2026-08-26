@@ -1,4 +1,3 @@
-// Agents/190_net-usd-sale-purchase.py //
 import time
 import re
 import sys
