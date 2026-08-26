@@ -14,10 +14,14 @@ from webdriver_manager.chrome import ChromeDriverManager
 from supabase import create_client, Client
 import os
 
+# =====================================================================
+# CONFIGURATION: Target Tables & Dataset Specs
+# =====================================================================
 CHECK_TABLE = "data_points"
 DRAFT_TABLE = "data_points_draft"
 DATASET_ID = 180
 MAX_NAV_ATTEMPTS = 3
+# =====================================================================
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "YOUR_SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "YOUR_SUPABASE_KEY")
