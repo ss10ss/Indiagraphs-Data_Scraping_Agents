@@ -1,4 +1,3 @@
-// Agents/181_gold-rsrve.py //
 import time
 import re
 import sys
