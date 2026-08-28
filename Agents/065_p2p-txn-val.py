@@ -212,6 +212,11 @@ try:
                 driver.save_screenshot(f"step_fail_attempt{attempt}.png")
             except Exception:
                 pass
+            try:
+                with open(f"step_fail_attempt{attempt}_source.html", "w", encoding="utf-8") as f:
+                    f.write(driver.page_source)
+            except Exception:
+                pass
             if attempt == MAX_NAV_ATTEMPTS:
                 break
             try:
