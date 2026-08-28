@@ -44,4 +44,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: p2p-txn-val-step-screenshots
-          path: Agents/step*.png
+          path: |
+            Agents/step*.png
+            Agents/step*.html
