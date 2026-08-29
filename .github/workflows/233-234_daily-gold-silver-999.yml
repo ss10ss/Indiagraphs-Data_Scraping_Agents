@@ -38,14 +38,14 @@ jobs:
 
       - name: Upload screenshot on failure
         if: failure()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: error-screenshot
           path: Agents/error_screenshot_attempt_*.png
 
       - name: Upload screenshot on success
         if: success()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: success-screenshot
           path: Agents/screenshot_*.png
