@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  scrape:
+  gold-silver-daily:
     runs-on: ubuntu-latest
 
     steps:
