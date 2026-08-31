@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  gold-silver-daily:
+  daily-gold-silver:
     runs-on: ubuntu-latest
 
     steps:
