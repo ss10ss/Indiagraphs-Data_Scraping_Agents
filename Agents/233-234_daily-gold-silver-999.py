@@ -29,19 +29,16 @@ def init_driver():
 
 
 def format_period_label(date_str: str) -> str:
-    """Convert DD/MM/YYYY to 'DD Mon YYYY' format e.g. 28 Aug 2026."""
     dt = datetime.strptime(date_str.strip(), "%d/%m/%Y")
     return dt.strftime("%d %b %Y")
 
 
 def format_period_start(date_str: str) -> str:
-    """Convert DD/MM/YYYY to YYYY-MM-DD format."""
     dt = datetime.strptime(date_str.strip(), "%d/%m/%Y")
     return dt.strftime("%Y-%m-%d")
 
 
 def parse_numeric(text: str) -> float:
-    """Clean and parse numeric string to float."""
     cleaned = text.replace(",", "").replace("\u00a0", "").strip()
     if cleaned == "":
         raise ValueError("Empty string encountered while parsing numeric value")
@@ -49,7 +46,6 @@ def parse_numeric(text: str) -> float:
 
 
 def check_existing(dataset_id: str, period_start: str) -> bool:
-    """Check if a datapoint already exists in daily_data_points table."""
     result = (
         supabase.table("daily_data_points")
         .select("id")
@@ -61,7 +57,6 @@ def check_existing(dataset_id: str, period_start: str) -> bool:
 
 
 def insert_datapoint(dataset_id: str, period_label: str, period_start: str, value: float) -> None:
-    """Insert a new datapoint into daily_data_points table."""
     supabase.table("daily_data_points").insert(
         {
             "dataset_id": dataset_id,
@@ -103,36 +98,46 @@ def scrape():
             except Exception:
                 print("No popup detected or already dismissed, continuing...")
 
-            # --- Click PM Tab ---
-            print("Selecting PM tab...")
-            pm_tab = wait.until(
-                EC.element_to_be_clickable((By.CSS_SELECTOR, "a[href='#tab-pm']"))
-            )
-            pm_tab.click()
-            print("PM tab selected.")
-            time.sleep(2)
+            # Scroll thoda niche, taaki Previous Dates section visible ho
+            driver.execute_script("window.scrollBy(0, 600);")
+            time.sleep(1)
 
-            # --- Wait for Table Body ---
-            print("Waiting for table rows to load...")
-            wait.until(
+            # --- Ensure PM tab is selected within Previous Dates Rate block ---
+            print("Locating 'Previous Dates Rate' block and PM tab...")
+
+            # Find the heading element that contains "Previous Dates Rate"
+            heading_el = wait.until(
                 EC.presence_of_element_located(
-                    (
-                        By.CSS_SELECTOR,
-                        "div#tab-pm table.table-striped tbody tr",
-                    )
+                    (By.XPATH, "//*[contains(text(), 'Previous Dates Rate')]")
                 )
             )
 
-            # Explicitly target rows inside PM tab
-            rows = driver.find_elements(
-                By.CSS_SELECTOR,
-                "div#tab-pm table.table-striped tbody tr",
+            # From heading, go up to a common container and find the PM tab inside that section
+            container = heading_el.find_element(By.XPATH, "./ancestor::section | ./ancestor::div")
+            pm_tab = container.find_element(By.CSS_SELECTOR, "a[href='#tab-pm']")
+            wait.until(EC.element_to_be_clickable(pm_tab))
+            pm_tab.click()
+            print("PM tab under 'Previous Dates Rate' selected.")
+            time.sleep(2)
+
+            # Now within this container, find the PM tab content and its table rows
+            print("Waiting for table rows inside PM tab under 'Previous Dates Rate'...")
+            pm_tab_content = container.find_element(By.CSS_SELECTOR, "div#tab-pm")
+
+            wait.until(
+                EC.presence_of_element_located(
+                    (By.CSS_SELECTOR, "div#tab-pm table.table-striped tbody tr")
+                )
+            )
+
+            rows = pm_tab_content.find_elements(
+                By.CSS_SELECTOR, "table.table-striped tbody tr"
             )
 
             if not rows:
-                raise RuntimeError("No table rows found inside PM tab")
+                raise RuntimeError("No table rows found inside PM tab of Previous Dates Rate")
 
-            print(f"Total rows found in PM tab: {len(rows)}")
+            print(f"Total rows found in PM tab (Previous Dates): {len(rows)}")
             first_row = rows[0]
 
             cells = first_row.find_elements(By.TAG_NAME, "td")
@@ -145,9 +150,9 @@ def scrape():
             gold_raw_text = cells[1].text
             silver_raw_text = cells[6].text
 
-            print(f"Raw date cell text: '{raw_date}'")
-            print(f"Raw Gold 999 cell text: '{gold_raw_text}'")
-            print(f"Raw Silver 999 cell text: '{silver_raw_text}'")
+            print(f"Raw date cell text (topmost row): '{raw_date}'")
+            print(f"Raw Gold 999 cell text (topmost row): '{gold_raw_text}'")
+            print(f"Raw Silver 999 cell text (topmost row): '{silver_raw_text}'")
 
             gold_999_value = parse_numeric(gold_raw_text)
             silver_999_value = parse_numeric(silver_raw_text)
@@ -167,9 +172,7 @@ def scrape():
             print(f"Screenshot saved: {screenshot_path}")
 
             # --- Gold 999 Insert Logic ---
-            print(
-                f"Checking Gold 999 (dataset_id={GOLD_DATASET_ID}) for {period_start}..."
-            )
+            print(f"Checking Gold 999 (dataset_id={GOLD_DATASET_ID}) for {period_start}...")
             if check_existing(GOLD_DATASET_ID, period_start):
                 print(
                     f"Gold 999 data for {period_label} already exists in daily_data_points. Skipping insert."
@@ -183,9 +186,7 @@ def scrape():
                 )
 
             # --- Silver 999 Insert Logic ---
-            print(
-                f"Checking Silver 999 (dataset_id={SILVER_DATASET_ID}) for {period_start}..."
-            )
+            print(f"Checking Silver 999 (dataset_id={SILVER_DATASET_ID}) for {period_start}...")
             if check_existing(SILVER_DATASET_ID, period_start):
                 print(
                     f"Silver 999 data for {period_label} already exists in daily_data_points. Skipping insert."
@@ -203,7 +204,6 @@ def scrape():
 
         except Exception as e:
             print(f"Error during navigation attempt {attempt}: {e}")
-            # Capture screenshot on each failed attempt
             try:
                 driver.save_screenshot(f"error_screenshot_attempt_{attempt}.png")
                 print(f"Error screenshot captured: error_screenshot_attempt_{attempt}.png")
