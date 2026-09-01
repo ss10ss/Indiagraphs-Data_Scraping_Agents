@@ -98,14 +98,23 @@ def scrape():
             except Exception:
                 print("No popup detected or already dismissed, continuing...")
 
-            # Slight scroll so 'Previous Dates Rate' area is in view (not strictly required but safer)
-            driver.execute_script("window.scrollBy(0, 400);")
-            time.sleep(1)
-
-            # --- Wait for PM tab table rows directly ---
-            print("Waiting for PM table rows under 'Previous Dates Rate'...")
-            wait.until(
+            # --- Scroll PM tab into view and click via JavaScript ---
+            print("Locating PM tab and clicking via JavaScript...")
+            pm_tab = wait.until(
                 EC.presence_of_element_located(
+                    (By.CSS_SELECTOR, "table.propage-tab.apm a[href='#tab-pm']")
+                )
+            )
+            driver.execute_script("arguments[0].scrollIntoView(true);", pm_tab)
+            time.sleep(1)
+            driver.execute_script("arguments[0].click();", pm_tab)
+            print("PM tab clicked via JavaScript.")
+            time.sleep(2)
+
+            # --- Wait for PM tab content to be visible ---
+            print("Waiting for PM tab content to become visible...")
+            wait.until(
+                EC.visibility_of_element_located(
                     (
                         By.CSS_SELECTOR,
                         "table.propage-tab.apm div#tab-pm table.table-striped tbody tr",
@@ -124,7 +133,6 @@ def scrape():
             print(f"Total rows found in PM tab (Previous Dates): {len(rows)}")
             first_row = rows[0]
 
-            # Use data-labels to be robust
             date_cell = first_row.find_element(By.CSS_SELECTOR, "td[data-label='PM']")
             gold_cell = first_row.find_element(By.CSS_SELECTOR, "td[data-label='Gold 999']")
             silver_cell = first_row.find_element(By.CSS_SELECTOR, "td[data-label='Silver 999']")
