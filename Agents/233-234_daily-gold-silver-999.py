@@ -21,10 +21,10 @@ MAX_RETRIES = 3
 
 def init_driver():
     options = webdriver.ChromeOptions()
-    options.add_argument('--headless')
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
-    options.add_argument('--window-size=1920,1080')
+    options.add_argument("--headless")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--window-size=1920,1080")
     return webdriver.Chrome(options=options)
 
 
@@ -98,57 +98,40 @@ def scrape():
             except Exception:
                 print("No popup detected or already dismissed, continuing...")
 
-            # Scroll thoda niche, taaki Previous Dates section visible ho
-            driver.execute_script("window.scrollBy(0, 600);")
+            # Slight scroll so 'Previous Dates Rate' area is in view (not strictly required but safer)
+            driver.execute_script("window.scrollBy(0, 400);")
             time.sleep(1)
 
-            # --- Ensure PM tab is selected within Previous Dates Rate block ---
-            print("Locating 'Previous Dates Rate' block and PM tab...")
-
-            # Find the heading element that contains "Previous Dates Rate"
-            heading_el = wait.until(
-                EC.presence_of_element_located(
-                    (By.XPATH, "//*[contains(text(), 'Previous Dates Rate')]")
-                )
-            )
-
-            # From heading, go up to a common container and find the PM tab inside that section
-            container = heading_el.find_element(By.XPATH, "./ancestor::section | ./ancestor::div")
-            pm_tab = container.find_element(By.CSS_SELECTOR, "a[href='#tab-pm']")
-            wait.until(EC.element_to_be_clickable(pm_tab))
-            pm_tab.click()
-            print("PM tab under 'Previous Dates Rate' selected.")
-            time.sleep(2)
-
-            # Now within this container, find the PM tab content and its table rows
-            print("Waiting for table rows inside PM tab under 'Previous Dates Rate'...")
-            pm_tab_content = container.find_element(By.CSS_SELECTOR, "div#tab-pm")
-
+            # --- Wait for PM tab table rows directly ---
+            print("Waiting for PM table rows under 'Previous Dates Rate'...")
             wait.until(
                 EC.presence_of_element_located(
-                    (By.CSS_SELECTOR, "div#tab-pm table.table-striped tbody tr")
+                    (
+                        By.CSS_SELECTOR,
+                        "table.propage-tab.apm div#tab-pm table.table-striped tbody tr",
+                    )
                 )
             )
 
-            rows = pm_tab_content.find_elements(
-                By.CSS_SELECTOR, "table.table-striped tbody tr"
+            rows = driver.find_elements(
+                By.CSS_SELECTOR,
+                "table.propage-tab.apm div#tab-pm table.table-striped tbody tr",
             )
 
             if not rows:
-                raise RuntimeError("No table rows found inside PM tab of Previous Dates Rate")
+                raise RuntimeError("No rows found in PM tab under Previous Dates Rate table")
 
             print(f"Total rows found in PM tab (Previous Dates): {len(rows)}")
             first_row = rows[0]
 
-            cells = first_row.find_elements(By.TAG_NAME, "td")
-            if len(cells) < 7:
-                raise RuntimeError(
-                    f"Expected at least 7 cells in the first row, found {len(cells)}"
-                )
+            # Use data-labels to be robust
+            date_cell = first_row.find_element(By.CSS_SELECTOR, "td[data-label='PM']")
+            gold_cell = first_row.find_element(By.CSS_SELECTOR, "td[data-label='Gold 999']")
+            silver_cell = first_row.find_element(By.CSS_SELECTOR, "td[data-label='Silver 999']")
 
-            raw_date = cells[0].text.strip()
-            gold_raw_text = cells[1].text
-            silver_raw_text = cells[6].text
+            raw_date = date_cell.text.strip()
+            gold_raw_text = gold_cell.text
+            silver_raw_text = silver_cell.text
 
             print(f"Raw date cell text (topmost row): '{raw_date}'")
             print(f"Raw Gold 999 cell text (topmost row): '{gold_raw_text}'")
