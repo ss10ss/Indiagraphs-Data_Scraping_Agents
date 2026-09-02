@@ -38,11 +38,11 @@ def format_period_start(date_str: str) -> str:
     return dt.strftime("%Y-%m-%d")
 
 
-def parse_numeric(text: str) -> float:
+def parse_numeric(text: str) -> int:
     cleaned = text.replace(",", "").replace("\u00a0", "").strip()
     if cleaned == "":
         raise ValueError("Empty string encountered while parsing numeric value")
-    return float(cleaned)
+    return int(cleaned)
 
 
 def check_existing(dataset_id: str, period_start: str) -> bool:
@@ -56,7 +56,7 @@ def check_existing(dataset_id: str, period_start: str) -> bool:
     return len(result.data) > 0
 
 
-def insert_datapoint(dataset_id: str, period_label: str, period_start: str, value: float) -> None:
+def insert_datapoint(dataset_id: str, period_label: str, period_start: str, value: int) -> None:
     supabase.table("daily_data_points").insert(
         {
             "dataset_id": dataset_id,
