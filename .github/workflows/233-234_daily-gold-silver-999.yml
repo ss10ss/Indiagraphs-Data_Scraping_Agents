@@ -2,7 +2,7 @@ name: 233-234_daily-gold-silver-999
 
 on:
   schedule:
-    - cron: '30 3 * * *'
+    - cron: '30 3 * * *' # Runs daily at 9:00 AM IST (03:30 UTC)
   workflow_dispatch:
 
 jobs:
