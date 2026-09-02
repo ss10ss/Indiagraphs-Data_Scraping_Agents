@@ -2,7 +2,7 @@ name: 233-234_daily-gold-silver-999
 
 on:
   schedule:
-    - cron: '30 13 * * *'
+    - cron: '30 3 * * *'
   workflow_dispatch:
 
 jobs:
