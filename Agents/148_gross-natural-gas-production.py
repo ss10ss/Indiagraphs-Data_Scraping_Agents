@@ -212,7 +212,7 @@ try:
 
             year = fiscal_year_start if month_num >= 4 else fiscal_year_start + 1
             period_label = f"{calendar.month_abbr[month_num]} {year}"
-            value = float(raw_val.replace(',', '').strip())
+            value = int(raw_val.replace(',', '').strip())
             scraped_data_list.append({"period_label": period_label, "value": value})
         except Exception as e:
             print(f"Skip (column '{month_name}'): {e}")
