@@ -2,8 +2,8 @@ name: 062_avg-daily-upi-val
 
 on:
   schedule:
-    - cron: '30 3 1-10 * *'   # Runs daily from the 1st-10th at 9:00 AM IST (03:30 UTC) - retries until the data is published
-
+    - cron: '30 3 15-25 * *'   # Runs daily from the 15th-25th at 9:00 AM IST (03:30 UTC)
+    
   workflow_dispatch:
 
 concurrency:
