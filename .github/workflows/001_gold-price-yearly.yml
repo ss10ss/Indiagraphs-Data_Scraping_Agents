@@ -2,7 +2,7 @@ name: 001_gold-price-yearly
 
 on:
   schedule:
-    - cron: '30 3 15-25 * *'   # Roz 15-25 tarikh, 9:00 AM IST (03:30 UTC)
+    - cron: '30 3 15-25 * *'   # Runs daily from the 15th-25th at 9:00 AM IST (03:30 UTC)
     
   workflow_dispatch:
 
