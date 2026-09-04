@@ -7,17 +7,20 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from supabase import create_client, Client
 
-# --- Supabase Setup ---
-SUPABASE_URL = os.environ.get("SUPABASE_URL")
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-
+# =====================================================================
+# Dataset Specs
+# =====================================================================
 GOLD_DATASET_ID = '233'
 SILVER_DATASET_ID = '234'
 CREATED_BY = 'c7dcaab6-1312-4d08-8b39-d327827d885f'
 TARGET_URL = 'https://ibjarates.com/'
 MAX_RETRIES = 3
+# =====================================================================
 
+# --- Supabase Setup ---
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 def init_driver():
     options = webdriver.ChromeOptions()
