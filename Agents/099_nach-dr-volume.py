@@ -15,7 +15,7 @@ from supabase import create_client, Client
 import os
 
 # =====================================================================
-# CONFIGURATION: Target Tables & Dataset Specs
+# Target Tables & Dataset Specs
 # =====================================================================
 CHECK_TABLE = "data_points"
 DRAFT_TABLE = "data_points_draft"
