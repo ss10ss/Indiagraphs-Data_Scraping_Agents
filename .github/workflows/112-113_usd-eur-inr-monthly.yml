@@ -2,8 +2,8 @@ name: 112-113_usd-eur-inr-monthly
 
 on:
   schedule:
-    - cron: '30 3 15-25 * *'   # Day 15-25, 9:00 AM IST (03:30 UTC) - jab tak data mil jaaye
-
+    - cron: '30 3 1-10 * *'   # Daily 1st-10th at 9:00 AM IST (03:30 UTC)
+    
   workflow_dispatch:
 
 concurrency:
