@@ -11,6 +11,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import Select
 from webdriver_manager.chrome import ChromeDriverManager
 from supabase import create_client, Client
+import os
 
 # =====================================================================
 # Target Tables & Dataset Specs
@@ -26,7 +27,6 @@ DATASETS = [
 # =====================================================================
 
 # Supabase Credentials
-import os
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "YOUR_SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "YOUR_SUPABASE_KEY")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
