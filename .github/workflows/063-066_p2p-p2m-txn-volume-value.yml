@@ -2,7 +2,7 @@ name: 063-066_p2p-p2m-txn-volume-value
 
 on:
   schedule:
-    - cron: '30 3 1-10 * *'   # Runs daily from the 1st-10th at 9:00 AM IST (03:30 UTC) - the latest completed month's stats are published early in the following month
+    - cron: '30 3 1-10 * *'   # Daily 1st-10th at 9:00 AM IST (03:30 UTC)
 
   workflow_dispatch:
 
