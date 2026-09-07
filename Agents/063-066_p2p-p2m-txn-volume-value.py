@@ -50,7 +50,7 @@ chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x
 def create_driver():
     d = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
     d.set_page_load_timeout(60)
-    w = WebDriverWait(d, 45)
+    w = WebDriverWait(d, 60)
     return d, w
 
 
@@ -100,11 +100,43 @@ def period_exists(table_name, dataset_id, period_label):
     return False
 
 
+TABLE_XPATH = "//table[contains(@class, 'custom-table')][.//span[contains(text(), 'P2P')]]"
+
+
+def _table_has_data(driver):
+    """
+    Returns True only when the P2P/P2M table is present AND its first
+    data row actually has a non-empty month cell + non-empty value cells.
+    Used as a custom wait condition so we don't stop waiting just because
+    the (possibly empty/loading) table skeleton appeared in the DOM.
+    """
+    try:
+        table = driver.find_element(By.XPATH, TABLE_XPATH)
+        row = table.find_element(By.XPATH, ".//tbody/tr[1]")
+        month_text = (row.find_element(By.XPATH, "./td[1]").get_attribute("textContent") or "").strip()
+        if not month_text:
+            return False
+        value_cells = row.find_elements(By.XPATH, "./td[position() > 1]")
+        if not value_cells:
+            return False
+        # Require every value cell to be non-empty too -- a half-rendered
+        # row (e.g. month filled in but values still loading) should not
+        # pass yet.
+        for cell in value_cells:
+            text = (cell.get_attribute("textContent") or "").strip()
+            if not text:
+                return False
+        return True
+    except Exception:
+        return False
+
+
 def navigate_to_table(driver, wait):
     """
     Opens the page, switches to the 'P2P and P2M Transactions' tab, and
-    waits for the results table to load. Raises an Exception on failure
-    at any step (caller handles the retry).
+    waits for the results table to actually finish loading data (not just
+    for the table element to appear). Raises an Exception on failure at
+    any step (caller handles the retry).
     """
     print("Opening page...")
     driver.get("https://www.npci.org.in/product/ecosystem-statistics/upi")
@@ -124,14 +156,28 @@ def navigate_to_table(driver, wait):
         tab.click()
     except Exception:
         driver.execute_script("arguments[0].click();", tab)
-    time.sleep(3)
+
+    print("Confirming the tab is actually selected...")
+    try:
+        wait.until(EC.presence_of_element_located(
+            (By.XPATH, "//div[@role='tab' and @id='tab-3' and @aria-selected='true']")
+        ))
+    except Exception:
+        # Not fatal on its own -- some sites don't update aria-selected
+        # reliably. We still fall through to the data-readiness wait below,
+        # which is the check that actually matters.
+        print("Could not confirm aria-selected='true' on the tab, continuing anyway...")
+
     driver.save_screenshot("step2_tab_selected.png")
 
-    print("Waiting for the results table to load...")
-    wait.until(EC.presence_of_element_located((By.XPATH, "//table[contains(@class, 'custom-table')][.//span[contains(text(), 'P2P')]]")))
-    time.sleep(2)
+    print("Waiting for the results table to fully load its data (polling, not a fixed sleep)...")
+    wait.until(_table_has_data)
+
+    # Small settle buffer after data is confirmed present, in case of any
+    # trailing re-render, then take the "loaded" screenshot.
+    time.sleep(1)
     driver.save_screenshot("step3_table_loaded.png")
-    print("SUCCESS: Table loaded.")
+    print("SUCCESS: Table loaded with data.")
 
 
 driver, wait = create_driver()
@@ -165,7 +211,7 @@ try:
         sys.exit(1)
 
     print("Reading the data row...")
-    table = driver.find_element(By.XPATH, "//table[contains(@class, 'custom-table')][.//span[contains(text(), 'P2P')]]")
+    table = driver.find_element(By.XPATH, TABLE_XPATH)
     data_row = table.find_element(By.XPATH, ".//tbody/tr[1]")
 
     month_cell = data_row.find_element(By.XPATH, "./td[1]")
