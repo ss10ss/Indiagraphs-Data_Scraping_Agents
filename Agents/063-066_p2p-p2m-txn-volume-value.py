@@ -17,6 +17,18 @@ import os
 CHECK_TABLE = "data_points"
 DRAFT_TABLE = "data_points_draft"
 MAX_NAV_ATTEMPTS = 3   # Number of full navigation retries (site load through table load)
+
+
+class NoDataPublishedError(Exception):
+    """
+    Raised when NPCI's site itself shows 'No data found' for the currently
+    selected month/year. This is NOT a scraping bug -- it means the source
+    has not published the latest period yet. Retrying navigation will not
+    help, so this is handled separately from real navigation failures.
+    """
+    pass
+
+
 DATASETS = [
     {"dataset_id": 63, "column_index": 2, "label": "P2P Volume"},
     {"dataset_id": 64, "column_index": 4, "label": "P2M Volume"},
@@ -131,6 +143,36 @@ def _table_has_data(driver):
         return False
 
 
+def _page_shows_no_data(driver):
+    """
+    Returns True if NPCI's own 'No data found' message is visible on the
+    page for the currently selected period. This is a real state the site
+    shows (not a loading placeholder), seen for both the default tab and
+    the P2P/P2M tab when the latest month hasn't been published yet.
+    """
+    try:
+        elements = driver.find_elements(
+            By.XPATH, "//*[contains(text(), 'No data found')]"
+        )
+        return any(el.is_displayed() for el in elements)
+    except Exception:
+        return False
+
+
+def _table_ready_or_no_data(driver):
+    """
+    Combined wait condition used right after switching tabs: resolves as
+    soon as EITHER the table has real data OR the site shows its own
+    'No data found' message -- whichever happens first. Returning a
+    truthy string keeps WebDriverWait happy; returning False keeps polling.
+    """
+    if _table_has_data(driver):
+        return "DATA"
+    if _page_shows_no_data(driver):
+        return "NO_DATA"
+    return False
+
+
 def navigate_to_table(driver, wait):
     """
     Opens the page, switches to the 'P2P and P2M Transactions' tab, and
@@ -170,8 +212,19 @@ def navigate_to_table(driver, wait):
 
     driver.save_screenshot("step2_tab_selected.png")
 
+    print("Waiting 5 seconds for the tab content to render before checking the table...")
+    time.sleep(5)
+    driver.save_screenshot("step2b_after_5s_wait.png")
+
     print("Waiting for the results table to fully load its data (polling, not a fixed sleep)...")
-    wait.until(_table_has_data)
+    result = wait.until(_table_ready_or_no_data)
+
+    if result == "NO_DATA":
+        driver.save_screenshot("step_no_data_found.png")
+        raise NoDataPublishedError(
+            "NPCI's site shows 'No data found' for the currently selected period -- "
+            "the latest month's P2P/P2M data has not been published yet."
+        )
 
     # Small settle buffer after data is confirmed present, in case of any
     # trailing re-render, then take the "loaded" screenshot.
@@ -191,6 +244,16 @@ try:
             navigate_to_table(driver, wait)
             navigation_success = True
             break
+        except NoDataPublishedError as nde:
+            # Not a bug -- NPCI simply hasn't published the latest period
+            # yet. Retrying navigation won't change that, so stop
+            # immediately instead of burning all 3 attempts and restarting
+            # the browser for nothing. The daily cron (1st-10th) will pick
+            # it up automatically once NPCI publishes it.
+            print(f"\nINFO: {nde}")
+            print("This is expected if NPCI hasn't published the latest month's data yet. "
+                  "No error -- the scheduled run on a later day will pick it up.")
+            sys.exit(0)
         except Exception as e:
             print(f"Error during navigation attempt {attempt}: {e}")
             try:
