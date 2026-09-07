@@ -212,9 +212,9 @@ def navigate_to_table(driver, wait):
 
     driver.save_screenshot("step2_tab_selected.png")
 
-    print("Waiting 5 seconds for the tab content to render before checking the table...")
-    time.sleep(5)
-    driver.save_screenshot("step2b_after_5s_wait.png")
+    print("Waiting 20 seconds for the tab content to render before checking the table...")
+    time.sleep(20)
+    driver.save_screenshot("step2b_after_20s_wait.png")
 
     print("Waiting for the results table to fully load its data (polling, not a fixed sleep)...")
     result = wait.until(_table_ready_or_no_data)
