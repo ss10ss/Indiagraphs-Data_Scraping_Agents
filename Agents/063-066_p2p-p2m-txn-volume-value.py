@@ -17,13 +17,12 @@ import os
 CHECK_TABLE = "data_points"
 DRAFT_TABLE = "data_points_draft"
 MAX_NAV_ATTEMPTS = 3   # Number of full navigation retries (site load through table load)
-DATASETS = 
-    [
+DATASETS = [
     {"dataset_id": 63, "column_index": 2, "label": "P2P Volume"},
     {"dataset_id": 64, "column_index": 4, "label": "P2M Volume"},
     {"dataset_id": 65, "column_index": 3, "label": "P2P Value"},
     {"dataset_id": 66, "column_index": 5, "label": "P2M Value"},
-    ]
+]
 # =====================================================================
 
 # Supabase Credentials
