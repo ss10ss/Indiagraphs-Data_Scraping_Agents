@@ -12,6 +12,8 @@ from supabase import create_client, Client
 # =====================================================================
 GOLD_DATASET_ID = '233'
 SILVER_DATASET_ID = '234'
+GOLD_SOURCE_NOTE = 'IBJA Gold 999 PM Price — ₹ per 10 grams'
+SILVER_SOURCE_NOTE = 'IBJA Silver 999 PM Price — ₹ per kg'
 CREATED_BY = 'c7dcaab6-1312-4d08-8b39-d327827d885f'
 TARGET_URL = 'https://ibjarates.com/'
 MAX_RETRIES = 3
@@ -59,7 +61,7 @@ def check_existing(dataset_id: str, period_start: str) -> bool:
     return len(result.data) > 0
 
 
-def insert_datapoint(dataset_id: str, period_label: str, period_start: str, value: int) -> None:
+def insert_datapoint(dataset_id: str, period_label: str, period_start: str, value: int, source_note: str) -> None:
     supabase.table("daily_data_points").insert(
         {
             "dataset_id": dataset_id,
@@ -69,6 +71,7 @@ def insert_datapoint(dataset_id: str, period_label: str, period_start: str, valu
             "period_end": period_start,
             "value": value,
             "note": None,
+            "source_note": source_note,
             "is_active": True,
             "created_by": CREATED_BY,
         }
@@ -173,7 +176,7 @@ def scrape():
                 )
             else:
                 insert_datapoint(
-                    GOLD_DATASET_ID, period_label, period_start, gold_999_value
+                    GOLD_DATASET_ID, period_label, period_start, gold_999_value, GOLD_SOURCE_NOTE
                 )
                 print(
                     f"SUCCESS: Gold 999 data for {period_label} inserted into daily_data_points."
@@ -187,7 +190,7 @@ def scrape():
                 )
             else:
                 insert_datapoint(
-                    SILVER_DATASET_ID, period_label, period_start, silver_999_value
+                    SILVER_DATASET_ID, period_label, period_start, silver_999_value, SILVER_SOURCE_NOTE
                 )
                 print(
                     f"SUCCESS: Silver 999 data for {period_label} inserted into daily_data_points."
