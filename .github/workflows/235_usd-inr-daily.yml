@@ -2,8 +2,8 @@ name: 235_usd-inr-daily
 
 on:
   schedule:
-    - cron: '30 4 * * 1-5'   # Runs weekdays at 10:00 AM IST (04:30 UTC) - RBI publishes the previous business day's rate each morning
-
+    - cron: '30 15 * * *'
+    
   workflow_dispatch:
 
 concurrency:
