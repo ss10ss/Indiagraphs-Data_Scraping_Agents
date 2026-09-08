@@ -1,0 +1,47 @@
+name: 235_usd-inr-daily
+
+on:
+  schedule:
+    - cron: '30 4 * * 1-5'   # Runs weekdays at 10:00 AM IST (04:30 UTC) - RBI publishes the previous business day's rate each morning
+
+  workflow_dispatch:
+
+concurrency:
+  group: 235_usd-inr-daily
+  cancel-in-progress: false
+
+jobs:
+  usd-inr-daily:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Chrome & Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+          python -m pip install --upgrade pip
+          pip install selenium webdriver-manager supabase
+
+      - name: Run Scraper Script
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: |
+          cd Agents
+          python 235_usd-inr-daily.py
+
+      - name: Upload Debug Screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: usd-inr-daily-step-screenshots
+          path: Agents/step*.png
