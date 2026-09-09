@@ -318,7 +318,7 @@ try:
                 "period_end": item["period_end"],
                 "value": value,
                 "is_active": True,
-                "": "RBI Reference Rate Archive",
+                "source_note": "RBI Reference Rate Archive",
                 "created_by": "c7dcaab6-1312-4d08-8b39-d327827d885f"
             }
 
