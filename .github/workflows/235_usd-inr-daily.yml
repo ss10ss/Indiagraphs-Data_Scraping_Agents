@@ -2,7 +2,9 @@ name: 235_usd-inr-daily
 
 on:
   schedule:
+    - cron: '30 6 * * *' # 12 noon IST
     - cron: '0 8 * * *' # 1:30 PM IST
+    - cron: '0 10 * * *' # 3:30 PM IST
     
   workflow_dispatch:
 
