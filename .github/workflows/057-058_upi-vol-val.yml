@@ -2,8 +2,8 @@ name: 057-058_upi-vol-val
 
 on:
   schedule:
-    - cron: '30 3 15-25 * *'   # Runs daily from the 15th-25th at 9:00 AM IST (03:30 UTC)
-
+    - cron: '30 2 1-5 * *'   # daily 1st-5th at 8:00 AM IST
+  
   workflow_dispatch:
 
 concurrency:
