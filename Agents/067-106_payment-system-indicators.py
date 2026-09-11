@@ -22,34 +22,34 @@ DRAFT_TABLE = "data_points_draft"
 MAX_NAV_ATTEMPTS = 3   # Number of full navigation retries (site load through table load)
 
 DATASETS = [
-    {"dataset_id": 67,  "idref": "2.Dz.1I", "unit": "volume_shift",       "label": "TDP Volume"},
-    {"dataset_id": 68,  "idref": "2.Dz.1J", "unit": "value_crore",        "label": "TDP Value"},
-    {"dataset_id": 69,  "idref": "2.Dz.S",  "unit": "volume_shift",       "label": "IMPS Volume"},
-    {"dataset_id": 70,  "idref": "2.Dz.T",  "unit": "value_crore",        "label": "IMPS Value"},
-    {"dataset_id": 71,  "idref": "2.Dz.W",  "unit": "volume_shift",       "label": "NEFT Volume"},
-    {"dataset_id": 72,  "idref": "2.Dz.X",  "unit": "value_crore",        "label": "NEFT Value"},
-    {"dataset_id": 73,  "idref": "2.Dz.E",  "unit": "volume_shift",       "label": "RTGS Volume"},
-    {"dataset_id": 74,  "idref": "2.Dz.F",  "unit": "value_crore",        "label": "RTGS Value"},
-    {"dataset_id": 75,  "idref": "2.Dz.o",  "unit": "volume_shift",       "label": "Credit Card Volume"},
-    {"dataset_id": 76,  "idref": "2.Dz.p",  "unit": "value_crore",        "label": "Credit Card Value"},
-    {"dataset_id": 77,  "idref": "2.Dz.u",  "unit": "volume_shift",       "label": "Debit Card Volume"},
-    {"dataset_id": 78,  "idref": "2.Dz.v",  "unit": "value_crore",        "label": "Debit Card Value"},
-    {"dataset_id": 79,  "idref": "2.Dz.k",  "unit": "volume_shift",       "label": "FASTag Volume"},
-    {"dataset_id": 80,  "idref": "2.Dz.l",  "unit": "value_crore",        "label": "FASTag Value"},
-    {"dataset_id": 81,  "idref": "2.Dz.1W", "unit": "volume_div10",       "label": "ATM Withdrawal Volume"},
-    {"dataset_id": 82,  "idref": "2.Dz.1X", "unit": "value_crore",        "label": "ATM Withdrawal Value"},
-    {"dataset_id": 87,  "idref": "2.Dz.M",  "unit": "volume_div10",       "label": "AePS Transfer Volume"},
-    {"dataset_id": 88,  "idref": "2.Dz.N",  "unit": "value_crore",        "label": "AePS Transfer Value"},
-    {"dataset_id": 97,  "idref": "2.Dz.U",  "unit": "volume_div10",       "label": "NACH Credit Volume"},
-    {"dataset_id": 98,  "idref": "2.Dz.V",  "unit": "value_crore",        "label": "NACH Credit Value"},
-    {"dataset_id": 99,  "idref": "2.Dz.i",  "unit": "volume_div10",       "label": "NACH Debit Volume"},
-    {"dataset_id": 100, "idref": "2.Dz.j",  "unit": "value_crore",        "label": "NACH Debit Value"},
-    {"dataset_id": 101, "idref": "2.Dz.O",  "unit": "volume_div10",       "label": "APBS Volume"},
-    {"dataset_id": 102, "idref": "2.Dz.P",  "unit": "value_crore",        "label": "APBS Value"},
-    {"dataset_id": 103, "idref": "2.Dz.1K", "unit": "volume_div10_round3", "label": "Mobile Payments Volume"},
-    {"dataset_id": 104, "idref": "2.Dz.1L", "unit": "value_crore",        "label": "Mobile Payments Value"},
-    {"dataset_id": 105, "idref": "2.Dz.1Q", "unit": "volume_div10_round3", "label": "Net Banking Volume"},
-    {"dataset_id": 106, "idref": "2.Dz.1R", "unit": "value_crore",        "label": "Net Banking Value"},
+    {"dataset_id": 67,  "idref": "2.Dz.1I", "unit": "volume",     "label": "TDP Volume"},
+    {"dataset_id": 68,  "idref": "2.Dz.1J", "unit": "value_crore", "label": "TDP Value"},
+    {"dataset_id": 69,  "idref": "2.Dz.S",  "unit": "volume",     "label": "IMPS Volume"},
+    {"dataset_id": 70,  "idref": "2.Dz.T",  "unit": "value_crore", "label": "IMPS Value"},
+    {"dataset_id": 71,  "idref": "2.Dz.W",  "unit": "volume",     "label": "NEFT Volume"},
+    {"dataset_id": 72,  "idref": "2.Dz.X",  "unit": "value_crore", "label": "NEFT Value"},
+    {"dataset_id": 73,  "idref": "2.Dz.E",  "unit": "volume",     "label": "RTGS Volume"},
+    {"dataset_id": 74,  "idref": "2.Dz.F",  "unit": "value_crore", "label": "RTGS Value"},
+    {"dataset_id": 75,  "idref": "2.Dz.o",  "unit": "volume",     "label": "Credit Card Volume"},
+    {"dataset_id": 76,  "idref": "2.Dz.p",  "unit": "value_crore", "label": "Credit Card Value"},
+    {"dataset_id": 77,  "idref": "2.Dz.u",  "unit": "volume",     "label": "Debit Card Volume"},
+    {"dataset_id": 78,  "idref": "2.Dz.v",  "unit": "value_crore", "label": "Debit Card Value"},
+    {"dataset_id": 79,  "idref": "2.Dz.k",  "unit": "volume",     "label": "FASTag Volume"},
+    {"dataset_id": 80,  "idref": "2.Dz.l",  "unit": "value_crore", "label": "FASTag Value"},
+    {"dataset_id": 81,  "idref": "2.Dz.1W", "unit": "volume",     "label": "ATM Withdrawal Volume"},
+    {"dataset_id": 82,  "idref": "2.Dz.1X", "unit": "value_crore", "label": "ATM Withdrawal Value"},
+    {"dataset_id": 87,  "idref": "2.Dz.M",  "unit": "volume",     "label": "AePS Transfer Volume"},
+    {"dataset_id": 88,  "idref": "2.Dz.N",  "unit": "value_crore", "label": "AePS Transfer Value"},
+    {"dataset_id": 97,  "idref": "2.Dz.U",  "unit": "volume",     "label": "NACH Credit Volume"},
+    {"dataset_id": 98,  "idref": "2.Dz.V",  "unit": "value_crore", "label": "NACH Credit Value"},
+    {"dataset_id": 99,  "idref": "2.Dz.i",  "unit": "volume",     "label": "NACH Debit Volume"},
+    {"dataset_id": 100, "idref": "2.Dz.j",  "unit": "value_crore", "label": "NACH Debit Value"},
+    {"dataset_id": 101, "idref": "2.Dz.O",  "unit": "volume",     "label": "APBS Volume"},
+    {"dataset_id": 102, "idref": "2.Dz.P",  "unit": "value_crore", "label": "APBS Value"},
+    {"dataset_id": 103, "idref": "2.Dz.1K", "unit": "volume",     "label": "Mobile Payments Volume"},
+    {"dataset_id": 104, "idref": "2.Dz.1L", "unit": "value_crore", "label": "Mobile Payments Value"},
+    {"dataset_id": 105, "idref": "2.Dz.1Q", "unit": "volume",     "label": "Net Banking Volume"},
+    {"dataset_id": 106, "idref": "2.Dz.1R", "unit": "value_crore", "label": "Net Banking Value"},
 ]
 # =====================================================================
 
@@ -168,30 +168,12 @@ def parse_value(raw_val):
     return int(cleaned) if '.' not in cleaned else float(cleaned)
 
 
-def parse_value_div10(raw_val, round_digits=None):
-    """
-    The site reports the Volume figure in Lakhs, but Supabase stores
-    it in Millions. Divide by 10 to convert Lakhs -> Millions.
-    e.g. '4,176.39' -> 417.639
-    """
-    cleaned = raw_val.replace(',', '').strip()
-    val = int(cleaned) if '.' not in cleaned else float(cleaned)
-    val = val / 10
-    if round_digits is not None:
-        val = round(val, round_digits)
-    return val
-
-
 def convert_value(raw_val, unit):
     """
     Dispatches to the right conversion for a dataset's unit type.
     """
-    if unit == "volume_shift":
+    if unit == "volume":
         return convert_lakh_to_million(raw_val)
-    elif unit == "volume_div10":
-        return parse_value_div10(raw_val)
-    elif unit == "volume_div10_round3":
-        return parse_value_div10(raw_val, round_digits=3)
     elif unit == "value_crore":
         return parse_value(raw_val)
     else:
