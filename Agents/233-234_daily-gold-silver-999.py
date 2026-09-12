@@ -169,34 +169,34 @@ def scrape():
             print(f"Screenshot saved: {screenshot_path}")
 
             # --- Gold 999 Insert Logic ---
-            print(f"Checking Gold 999 (dataset_id={GOLD_DATASET_ID}) for {period_start}...")
+            print(f"🧐 Checking Gold 999 (dataset_id={GOLD_DATASET_ID}) for {period_start}...")
             if check_existing(GOLD_DATASET_ID, period_start):
                 print(
-                    f"Gold 999 data for {period_label} already exists in daily_data_points. Skipping insert."
+                    f"⏭️ Gold 999 data for {period_label} already exists in daily_data_points. Skipping insert."
                 )
             else:
                 insert_datapoint(
                     GOLD_DATASET_ID, period_label, period_start, gold_999_value, GOLD_SOURCE_NOTE
                 )
                 print(
-                    f"SUCCESS: Gold 999 data for {period_label} inserted into daily_data_points."
+                    f"✅ SUCCESS: Gold 999 data for {period_label} inserted into daily_data_points."
                 )
 
             # --- Silver 999 Insert Logic ---
-            print(f"Checking Silver 999 (dataset_id={SILVER_DATASET_ID}) for {period_start}...")
+            print(f"🧐Checking Silver 999 (dataset_id={SILVER_DATASET_ID}) for {period_start}...")
             if check_existing(SILVER_DATASET_ID, period_start):
                 print(
-                    f"Silver 999 data for {period_label} already exists in daily_data_points. Skipping insert."
+                    f"⏭️ Silver 999 data for {period_label} already exists in daily_data_points. Skipping insert."
                 )
             else:
                 insert_datapoint(
                     SILVER_DATASET_ID, period_label, period_start, silver_999_value, SILVER_SOURCE_NOTE
                 )
                 print(
-                    f"SUCCESS: Silver 999 data for {period_label} inserted into daily_data_points."
+                    f"✅SUCCESS: Silver 999 data for {period_label} inserted into daily_data_points."
                 )
 
-            print("Scraping and insertion complete.")
+            print("Scraping and insertion complete. ██████ 100%")
             break
 
         except Exception as e:
