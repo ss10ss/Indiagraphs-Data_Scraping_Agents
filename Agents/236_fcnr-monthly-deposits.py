@@ -1,7 +1,5 @@
 import time
-import re
 import sys
-from datetime import datetime
 import calendar
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -21,6 +19,7 @@ CHECK_TABLE = "data_points"
 DRAFT_TABLE = "data_points_draft"
 DATASET_ID = 236
 MAX_NAV_ATTEMPTS = 3   # Number of full navigation retries (site load through table load)
+ROWS_TO_SCRAPE = 5
 # =====================================================================
 
 # Supabase Credentials
@@ -54,7 +53,7 @@ def create_driver():
 
 def parse_monthly_dates(period_label):
     """
-    Handles the format: 'Jun 2026' -> (2026-06-01, 2026-06-30)
+    Handles the format: 'Mar 2026' -> (2026-03-01, 2026-03-31)
     """
     try:
         parts = period_label.strip().split()
@@ -64,10 +63,6 @@ def parse_monthly_dates(period_label):
         month_str, year_str = parts[0].title(), parts[1]
         month_modules = {v: k for k, v in enumerate(calendar.month_abbr)}
         month_num = month_modules.get(month_str[:3])
-
-        if not month_num:
-            month_modules_full = {v: k for k, v in enumerate(calendar.month_name)}
-            month_num = month_modules_full.get(month_str)
 
         if not month_num:
             return None, None
@@ -94,80 +89,12 @@ def period_exists(table_name, dataset_id, period_label):
         return True
 
     all_records = supabase.table(table_name).select("period_label").eq("dataset_id", dataset_id).execute()
-    normalized_target = period_label.replace("\u2013", "-").strip()
+    normalized_target = period_label.replace("–", "-").strip()
     for rec in all_records.data:
-        db_label = rec.get("period_label", "").replace("\u2013", "-").strip()
+        db_label = rec.get("period_label", "").replace("–", "-").strip()
         if db_label == normalized_target:
             return True
     return False
-
-
-def parse_value(raw_val):
-    """
-    Values are reported in US$ Millions with Indian-style comma grouping,
-    e.g. '35,487.42' -> 35487.42. Copied as-is, no unit conversion.
-    """
-    cleaned = raw_val.replace(',', '').strip()
-    return float(cleaned) if '.' in cleaned else int(cleaned)
-
-
-def get_fiscal_year_start(month_cell):
-    """
-    Month cells only carry the month name ('Jun.'). The year comes from the
-    fiscal-year header row above each block, e.g. '2026-27'. Indian fiscal
-    year runs Apr-Mar, so Apr-Dec -> fy_start, Jan-Mar -> fy_start + 1.
-    """
-    try:
-        ths = month_cell.find_elements(By.XPATH, "preceding::th[@bid='3229'][1]")
-        if not ths:
-            return None
-        spans = ths[0].find_elements(By.XPATH, ".//span")
-        text = spans[0].get_attribute("textContent") if spans else ths[0].get_attribute("textContent")
-        text = (text or "").replace('\xa0', ' ').strip()
-        m = re.match(r'(\d{4})-(\d{2})', text)
-        if m:
-            return int(m.group(1))
-    except Exception:
-        pass
-    return None
-
-
-def resolve_year(fy_start, month_num):
-    """Apr-Dec belong to the fiscal year's start year; Jan-Mar to the next."""
-    if fy_start is None:
-        return None
-    return fy_start if month_num >= 4 else fy_start + 1
-
-
-def extract_value_from_row(month_cell):
-    """
-    Value cell for Outstanding FCNR(B) is bid=3189 within the SAME row as the
-    month cell (bid=3188). Row-ancestor matching is used deliberately: the
-    top-5 rows span two fiscal-year blocks, so the value idref's middle index
-    (nU.nr.0.x vs nU.nr.1.x) changes mid-list and cannot be hardcoded.
-
-    Normally the value is a plain td > span. If the cell is currently
-    selected/highlighted, it renders as an overlay whose value sits in the
-    aria-label attribute instead.
-    """
-    try:
-        row = month_cell.find_element(By.XPATH, "./ancestor::tr[1]")
-
-        spans = row.find_elements(By.XPATH, ".//td[@bid='3189']//span")
-        for sp in spans:
-            t = (sp.get_attribute("textContent") or "").strip()
-            if t:
-                return t
-
-        overlays = row.find_elements(By.XPATH, ".//td[@bid='3189']//*[@aria-label]")
-        for el in overlays:
-            aria = el.get_attribute("aria-label") or ""
-            m = re.search(r"([\d,]+(?:\.\d+)?)", aria)
-            if m:
-                return m.group(1)
-    except Exception:
-        pass
-    return None
 
 
 def navigate_to_table(driver, wait):
@@ -226,9 +153,7 @@ def navigate_to_table(driver, wait):
     driver.save_screenshot("step4_results_updated.png")
 
     print("Clicking the 'NRI Deposits' link...")
-    report_link = wait.until(EC.element_to_be_clickable(
-        (By.XPATH, "//a[contains(normalize-space(.), 'NRI Deposits')]")
-    ))
+    report_link = wait.until(EC.element_to_be_clickable((By.XPATH, "//a[contains(text(), 'NRI Deposits')]")))
 
     main_window = driver.current_window_handle
     try:
@@ -256,30 +181,8 @@ def navigate_to_table(driver, wait):
     driver.switch_to.frame(iframe_element)
     print("Successfully switched inside the data iframe.")
 
-    print("Selecting the 'New Format' tab...")
-    new_format_selected = False
-    for tab_attempt in range(1, 4):
-        try:
-            new_format_tab = wait.until(EC.element_to_be_clickable((By.XPATH, "//div[@title='New Format']")))
-            driver.execute_script("arguments[0].click();", new_format_tab)
-            time.sleep(3)
-            tab_class = new_format_tab.get_attribute("class") or ""
-            if "sapMTabStripItemSelected" in tab_class:
-                new_format_selected = True
-                print(f"'New Format' tab confirmed selected (attempt {tab_attempt}).")
-                break
-            print(f"'New Format' tab click attempt {tab_attempt} did not register as selected, retrying...")
-        except Exception as e:
-            print(f"'New Format' tab click attempt {tab_attempt} raised an error: {e}")
-        time.sleep(2)
-
-    driver.save_screenshot("step5b_new_format_selected.png")
-
-    if not new_format_selected:
-        raise Exception("Could not confirm 'New Format' tab got selected after retries - table would load in Old Format layout.")
-
     print("Waiting for table elements to be validated...")
-    wait.until(EC.presence_of_all_elements_located((By.XPATH, "//td[@bid='3188']")))
+    wait.until(EC.presence_of_all_elements_located((By.XPATH, "//*[@bid='3188' or @bid='3189' or @bid='3229']")))
     print("SUCCESS: Table loaded, elements found.")
     driver.save_screenshot("step6_data_tab_loaded.png")
 
@@ -315,52 +218,42 @@ try:
         sys.exit(1)
 
     print("Starting monthly data processing...")
-    try:
-        wait.until(lambda d: len(d.find_elements(By.XPATH, "//td[@bid='3188']")) >= 5)
-    except Exception:
-        print("WARNING: Fewer than 5 month cells found even after waiting; proceeding with whatever is available.")
-    month_cells = driver.find_elements(By.XPATH, "//td[@bid='3188']")
-    print(f"Total month cells found: {len(month_cells)}")
+    table_rows = driver.find_elements(By.XPATH, "//tr[th[@bid='3229'] or td[@bid='3188']]")
 
     scraped_data_list = []
-    month_modules = {v: k for k, v in enumerate(calendar.month_abbr)}
+    current_fy = None
 
-    for cell in month_cells:
+    for row in table_rows:
         try:
-            month_span = cell.find_elements(By.XPATH, ".//span")
-            if not month_span:
-                print("Skip: no month span found - row may be unrendered.")
-                continue
-            raw_month = month_span[0].get_attribute("textContent").strip()
-            if not raw_month:
-                print("Skip: month text is empty.")
+            year_headers = row.find_elements(By.XPATH, "./th[@bid='3229']//span")
+            if year_headers:
+                current_fy = year_headers[0].get_attribute("textContent").strip()
                 continue
 
-            # Month cells carry 'Jun.' / 'May' (no year, trailing dot on some)
-            month_name = raw_month.rstrip('.').strip().title()
-            month_num = month_modules.get(month_name[:3])
-            if not month_num:
-                print(f"Skip: could not parse month from '{raw_month}'.")
-                continue
+            month_elements = row.find_elements(By.XPATH, "./td[@bid='3188' and @c='0']//span")
+            # Outstanding FCNR(B) column: bid='3189', c='2'
+            val_elements = row.find_elements(By.XPATH, "./td[@bid='3189' and @c='2']//span")
 
-            fy_start = get_fiscal_year_start(cell)
-            year = resolve_year(fy_start, month_num)
-            if year is None:
-                print(f"Skip ({raw_month}): fiscal-year header not found.")
-                continue
+            if month_elements and val_elements and current_fy:
+                # Month labels on this site sometimes have a trailing period (e.g. 'Jun.')
+                raw_month = month_elements[0].get_attribute("textContent").strip().rstrip('.').strip().title()
+                raw_val = val_elements[0].get_attribute("textContent").strip()
 
-            raw_val = extract_value_from_row(cell)
-            if not raw_val:
-                print(f"Skip ({month_name} {year}): FCNR(B) value not found in row.")
-                continue
+                if raw_month and raw_val:
+                    fy_start = int(current_fy.split('-')[0].strip())
+                    fy_end = int(current_fy.split('-')[1].strip())
+                    if len(str(fy_end)) == 2:
+                        fy_end = int(str(fy_start)[:2] + str(fy_end))
 
-            full_period_label = f"{calendar.month_abbr[month_num]} {year}"
-            val = parse_value(raw_val)
-            scraped_data_list.append({"period_label": full_period_label, "value": val})
+                    target_year = fy_end if raw_month.upper() in ["JAN", "FEB", "MAR"] else fy_start
+                    full_period_label = f"{raw_month} {target_year}"
+
+                    val = float(raw_val.replace(',', '').strip())
+                    scraped_data_list.append({"period_label": full_period_label, "value": val})
         except Exception:
             continue
 
-    scraped_data_list = scraped_data_list[:5]
+    scraped_data_list = scraped_data_list[:ROWS_TO_SCRAPE]
     scraped_data_list.reverse()
 
     valid_rows_count = 0
