@@ -152,8 +152,20 @@ def navigate_to_table(driver, wait):
     time.sleep(15)
     driver.save_screenshot("step4_results_updated.png")
 
-    print("Clicking the 'NRI Deposits' link...")
-    report_link = wait.until(EC.element_to_be_clickable((By.XPATH, "//a[contains(text(), 'NRI Deposits')]")))
+    print("Clicking the 'NRI Deposits' link (Monthly variant - the same title also exists under Yearly)...")
+    candidate_links = wait.until(EC.presence_of_all_elements_located((By.XPATH, "//a[normalize-space(text())='NRI Deposits']")))
+    report_link = None
+    for link in candidate_links:
+        try:
+            container_text = (link.find_element(By.XPATH, "./ancestor::div[contains(@class, 'resultList')]").get_attribute("textContent") or "")
+        except Exception:
+            container_text = (link.find_element(By.XPATH, "..").get_attribute("textContent") or "")
+        if "Monthly" in container_text:
+            report_link = link
+            break
+
+    if report_link is None:
+        raise Exception("Could not find the 'NRI Deposits' link under the 'Monthly' category among the search results.")
 
     main_window = driver.current_window_handle
     try:
