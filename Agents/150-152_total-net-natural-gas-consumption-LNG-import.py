@@ -4,7 +4,6 @@ import re
 import sys
 import time
 from datetime import date
-
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
@@ -393,7 +392,7 @@ try:
             )
 
     print("\n" + "=" * 72)
-    print("MERGED SCRAPE SUMMARY")
+    print("AUTOMATION SCRAPE SUMMARY")
     print("=" * 72)
     for config in DATASET_CONFIGS:
         dataset_failures = [f for f in all_failures if f["dataset_id"] == config["dataset_id"]]
