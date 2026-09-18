@@ -2,7 +2,7 @@ name: 244_nifty50-daily-close
 
 on:
   schedule:
-    - cron: '00 8 * * 1-5'   # 1:30 PM IST)
+    - cron: '00 8 * * 1-5'   # 1:30 PM IST
 
   workflow_dispatch:
 
