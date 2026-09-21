@@ -1,0 +1,47 @@
+name: 245_gold-995-daily
+
+on:
+  schedule:
+    - cron: '30 12 * * *'   # Runs daily at 6:00 PM IST (12:30 UTC) - after IBJA's PM rate is published
+
+  workflow_dispatch:
+
+concurrency:
+  group: 245_gold-995-daily
+  cancel-in-progress: false
+
+jobs:
+  gold-995-daily:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Chrome & Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+          python -m pip install --upgrade pip
+          pip install selenium webdriver-manager supabase
+
+      - name: Run Scraper Script
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: |
+          cd Agents
+          python 245_gold-995-daily.py
+
+      - name: Upload Debug Screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gold-995-daily-step-screenshots
+          path: Agents/*.png
