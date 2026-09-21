@@ -71,6 +71,7 @@ def insert_datapoint(dataset_id: str, period_label: str, period_start: str, valu
             "note": None,
             "is_active": True,
             "created_by": CREATED_BY,
+            "source_note": "IBJA Gold 995 PM Price — ₹ per 10 grams"
         }
     ).execute()
 
