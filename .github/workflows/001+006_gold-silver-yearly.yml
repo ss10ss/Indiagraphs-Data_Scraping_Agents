@@ -1,4 +1,4 @@
-name: 001-006_gold-silver-yearly
+name: 001+006_gold-silver-yearly
 
 on:
   schedule:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: 001-006_gold-silver-yearly
+  group: 001+006_gold-silver-yearly
   cancel-in-progress: false
 
 jobs:
@@ -37,7 +37,7 @@ jobs:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: |
           cd Agents
-          python 001-006_gold-silver-yearly.py
+          python 001+006_gold-silver-yearly.py
 
       - name: Upload Debug Screenshots
         if: always()
