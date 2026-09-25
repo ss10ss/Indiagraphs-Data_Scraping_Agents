@@ -51,19 +51,23 @@ def create_driver():
     return d, w
 
 
-def parse_year_end_march_date(year_label):
+def parse_fy_from_end_march_year(year_label):
     """
-    This dataset reports an End-March snapshot, not a range: '2026' means
-    the position as of 31-March-2026, so period_start and period_end are
-    the same date.
+    The site reports an End-March snapshot year (e.g. '2026' = position as of
+    31-March-2026). In this table that snapshot represents Financial Year
+    (year-1)-(year), e.g. 2026 -> FY '2025-26', running 2025-03-31 to
+    2026-03-30 (matches existing rows in data_points).
     """
     try:
-        year = int(year_label.strip())
-        snapshot_date = f"{year}-03-31"
-        return snapshot_date, snapshot_date
+        end_year = int(year_label.strip())
+        start_year = end_year - 1
+        fy_label = f"{start_year}-{str(end_year)[-2:]}"
+        period_start = f"{start_year}-03-31"
+        period_end = f"{end_year}-03-30"
+        return fy_label, period_start, period_end
     except Exception as e:
         print(f"Error parsing year label: {e}")
-        return None, None
+        return None, None, None
 
 
 def period_exists(table_name, dataset_id, period_label):
@@ -281,30 +285,34 @@ try:
     failed_rows = []
     for item in scraped_data_list:
         try:
-            period_label = item["period_label"]
+            raw_year_label = item["period_label"]
             value = item["value"]
 
+            fy_label, period_start, period_end = parse_fy_from_end_march_year(raw_year_label)
+            if fy_label is None:
+                print(f"Skip: could not parse FY from year label '{raw_year_label}'.")
+                continue
+
             valid_rows_count += 1
-            print(f"\nProcessing Yearly Row {valid_rows_count} -> Year: {period_label}, Value: {value}")
+            print(f"\nProcessing Yearly Row {valid_rows_count} -> End-March Year: {raw_year_label} -> FY: {fy_label}, Value: {value}")
 
             # Step 1: Check if this period_label already exists in CHECK_TABLE (data_points)
-            if period_exists(CHECK_TABLE, DATASET_ID, period_label):
-                print(f"Skip: '{period_label}' already exists in '{CHECK_TABLE}'.")
+            if period_exists(CHECK_TABLE, DATASET_ID, fy_label):
+                print(f"Skip: '{fy_label}' already exists in '{CHECK_TABLE}'.")
                 continue
 
             # Step 2: Not found in CHECK_TABLE, now check DRAFT_TABLE (data_points_draft) too
-            if period_exists(DRAFT_TABLE, DATASET_ID, period_label):
-                print(f"Skip: '{period_label}' already exists in '{DRAFT_TABLE}'.")
+            if period_exists(DRAFT_TABLE, DATASET_ID, fy_label):
+                print(f"Skip: '{fy_label}' already exists in '{DRAFT_TABLE}'.")
                 continue
 
             # Step 3: Not found in either table - genuinely new data, insert into DRAFT_TABLE
-            print(f"'{period_label}' is absent from both tables. Inserting new record into '{DRAFT_TABLE}'...")
-            period_start, period_end = parse_year_end_march_date(period_label)
+            print(f"'{fy_label}' is absent from both tables. Inserting new record into '{DRAFT_TABLE}'...")
 
             data_to_insert = {
                 "dataset_id": DATASET_ID,
-                "period_type": "YEAR",
-                "period_label": period_label,
+                "period_type": "FY",
+                "period_label": fy_label,
                 "period_start": period_start,
                 "period_end": period_end,
                 "value": value,
@@ -313,7 +321,7 @@ try:
             }
 
             insert_resp = supabase.table(DRAFT_TABLE).insert(data_to_insert).execute()
-            print(f"SUCCESS: New data for {period_label} inserted into '{DRAFT_TABLE}'.")
+            print(f"SUCCESS: New data for {fy_label} inserted into '{DRAFT_TABLE}'.")
 
         except Exception as row_err:
             print(f"Row operation error: {row_err}")
