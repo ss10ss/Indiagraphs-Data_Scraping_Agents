@@ -9,6 +9,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import Select
+from selenium.common.exceptions import TimeoutException
 from webdriver_manager.chrome import ChromeDriverManager
 from supabase import create_client, Client
 import os
@@ -92,11 +93,23 @@ def navigate_to_table(driver, wait):
     Raises an Exception on failure at any step (caller handles the retry).
     """
     print("Opening page...")
-    driver.get("https://data.rbi.org.in/DBIE/#/dbie/searchresult")
+    try:
+        driver.get("https://data.rbi.org.in/DBIE/#/dbie/searchresult")
+    except TimeoutException:
+        print("WARNING: Initial page load timed out; continuing with refresh.")
 
     print("Waiting explicitly for the page to settle...")
-    time.sleep(12)
+    time.sleep(10)
     driver.save_screenshot("step1_initial_page.png")
+
+    # Site often gets stuck on a loader/blur screen on first load; a refresh clears it
+    print("Refreshing the page to clear the loader...")
+    try:
+        driver.refresh()
+    except TimeoutException:
+        print("WARNING: Refresh timed out; continuing.")
+    time.sleep(12)
+    driver.save_screenshot("step1b_after_refresh.png")
 
     try:
         alert = driver.switch_to.alert
