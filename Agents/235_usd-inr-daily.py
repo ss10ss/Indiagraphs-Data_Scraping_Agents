@@ -142,13 +142,15 @@ def navigate_to_table(driver, wait):
     driver.save_screenshot("step4_results_updated.png")
 
     print("Clicking the 'Daily Exchange Rate of the Indian Rupee' link...")
-    report_link = wait.until(EC.element_to_be_clickable((By.XPATH, "//a[contains(text(), 'Daily Exchange Rate of the Indian Rupee')]")))
+    report_link = wait.until(EC.presence_of_element_located((
+        By.XPATH,
+        "//a[contains(@class,'repLink') and contains(normalize-space(.), 'Daily Exchange Rate of the Indian Rupee')]"
+    )))
+    driver.execute_script("arguments[0].scrollIntoView({block:'center'});", report_link)
+    time.sleep(1)
 
     main_window = driver.current_window_handle
-    try:
-        report_link.click()
-    except Exception:
-        driver.execute_script("arguments[0].click();", report_link)
+    driver.execute_script("arguments[0].click();", report_link)
 
     print("Link clicked. Waiting dynamically for the new tab to open...")
     wait.until(lambda d: len(d.window_handles) > 1)
