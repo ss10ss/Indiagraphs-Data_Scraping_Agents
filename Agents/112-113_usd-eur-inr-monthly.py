@@ -98,6 +98,15 @@ def navigate_to_table(driver, wait):
     time.sleep(12)
     driver.save_screenshot("step1_initial_page.png")
 
+    # Site often gets stuck on a loader/blur screen on first load; a refresh clears it
+    print("Refreshing the page to clear the loader...")
+    try:
+        driver.refresh()
+    except TimeoutException:
+        print("WARNING: Refresh timed out; continuing.")
+    time.sleep(12)
+    driver.save_screenshot("step1b_after_refresh.png")
+    
     try:
         alert = driver.switch_to.alert
         alert.dismiss()
